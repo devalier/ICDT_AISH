@@ -61,17 +61,39 @@ Caddy terminates TLS for `aish.devalier.com` and obtains its certificate
 automatically. `deploy/nginx.conf` and `deploy/aish.service` cover the non-container
 route. The application refuses to start in production on development defaults.
 
-### Provisioning the datasets
+### Provisioning EU-MMLU
 
-EU-MMLU is not redistributed here:
+The dataset is not redistributed here. Fetch it on any machine that can reach
+`huggingface.co`:
 
 ```bash
-python3 scripts/fetch_eu_mmlu.py            # writes data/eu_mmlu.jsonl
+python3 scripts/fetch_eu_mmlu.py                 # all ~17,200 rows
+python3 scripts/fetch_eu_mmlu.py --limit 2000    # a smaller slice to start with
 ```
 
-Then pin the revision in `packs/suites/eu_mmlu.yaml`. Until it is pinned,
-`python3 -m harness validate --strict` fails — that is the gate for a scored run.
-The AILuminate prompt set is licensed separately and must be provisioned the same way.
+It writes `data/eu_mmlu.jsonl` in the published schema, unmodified, plus
+`data/eu_mmlu.revision.json` recording what was fetched. If the columns have changed
+upstream it fails loudly rather than coercing them.
+
+If the application host has no egress to Hugging Face, fetch it elsewhere and copy
+the file into the data volume:
+
+```bash
+docker compose cp data/eu_mmlu.jsonl app:/data/eu_mmlu.jsonl
+```
+
+Then pin the revision in `packs/suites/eu_mmlu.yaml` (replace `PIN_ME`) and commit
+that change. Until it is pinned, `python3 -m harness validate --strict` fails — that
+is the gate for a scored run, and it is what makes two results comparable.
+
+**Run sizes.** A sampled run is 3,200 items (16 languages × 8 subjects × 25). A full
+run is the whole release, ~17,200 items, so raise `AISH_MAX_ITEMS_PER_RUN` to 20000
+first. A run above the limit is refused rather than shortened: truncating an ordered
+item list would drop whole languages and still report a parity floor over whatever
+survived.
+
+The AILuminate prompt set is licensed separately and must be provisioned the same
+way. It also needs the judge path, which is not implemented yet.
 
 ## The editable test-and-criteria module
 

@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..db import get_session
 from ..models import ModelTarget, Result, Run
 from ..packs import current
@@ -97,6 +98,16 @@ def start_run(
         items = build_items(suite, view, sample=sample, seed=DEFAULT_SEED)
     except RunError as exc:
         return fail(str(exc), 409)
+
+    limit = get_settings().max_items_per_run
+    if len(items) > limit:
+        return fail(
+            f"That run would send {len(items):,} items, above this instance's limit of "
+            f"{limit:,}. Use sample mode, or ask an administrator to raise "
+            "AISH_MAX_ITEMS_PER_RUN. The harness will not shorten a run silently, "
+            "because dropping items would distort the strata the score is averaged over.",
+            409,
+        )
 
     run = Run(
         user_id=context.user.id,

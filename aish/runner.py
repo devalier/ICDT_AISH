@@ -556,7 +556,13 @@ async def _execute(run_id: int) -> None:
 
     items = build_items(suite, view, sample=sample, seed=seed)
     if len(items) > settings.max_items_per_run:
-        items = items[: settings.max_items_per_run]
+        # Truncating here would drop whole strata from the tail of an ordered item
+        # list and still report a parity floor over the survivors. Refuse instead.
+        raise RunError(
+            f"This run would send {len(items)} items, above this instance's limit of "
+            f"{settings.max_items_per_run}. Raise AISH_MAX_ITEMS_PER_RUN or use "
+            "sample mode."
+        )
 
     api_key = None
     if ciphertext:

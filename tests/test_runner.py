@@ -246,3 +246,56 @@ def test_eu_mmlu_scores_and_computes_parity(seeded, monkeypatch, tmp_path):
     assert summary["language_accuracy"]["lt"] == 0.0
     assert summary["metrics"]["parity_floor"] == 0.0
     assert summary["verdicts"]["parity_floor"] == "fail"
+
+
+def test_an_oversized_run_is_refused_rather_than_truncated(seeded, monkeypatch, tmp_path):
+    """Slicing an ordered item list would drop whole languages from the tail and
+    still report a parity floor over the survivors. Refusing is the honest outcome."""
+    fixture = tmp_path / "eu_mmlu.jsonl"
+    rows = [
+        {
+            "Language": language, "Subject": "international_law", "Split": "test",
+            "Index": index, "Question": f"Q{index} in {language}?",
+            "Choice_0": "a", "Choice_1": "b", "Choice_2": "c", "Choice_3": "d",
+            "Answer": 0,
+        }
+        for language in ("en", "fr", "lt")
+        for index in range(10)
+    ]
+    fixture.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    monkeypatch.setattr(runner, "EU_MMLU_DATA", fixture)
+    monkeypatch.setenv("AISH_MAX_ITEMS_PER_RUN", "5")
+
+    from aish import config
+
+    config.get_settings.cache_clear()
+    user_id, target_id = seeded
+    run_id = _queue("eu_mmlu", user_id, target_id, sample=False)
+
+    adapter = StubAdapter(lambda _p: "The answer is A.")
+    monkeypatch.setattr(runner, "get_adapter", lambda _provider: adapter)
+    asyncio.run(runner.execute_run(run_id))
+
+    with session_scope() as db:
+        run = db.get(Run, run_id)
+        rows_written = list(db.scalars(select(Result).where(Result.run_id == run_id)))
+
+    assert run.status == "failed"
+    assert "above this instance's limit" in run.error
+    assert rows_written == [], "a refused run must not produce partial evidence"
+    assert adapter.calls == [], "a refused run must not call the model"
+    config.get_settings.cache_clear()
+
+
+def test_the_default_limit_admits_a_sampled_eu_mmlu_run():
+    """A cap below the smallest real sampled run would make truncation the norm."""
+    from aish.config import Settings
+
+    view = current()
+    suite = view.suite("eu_mmlu")
+    sampled_size = (
+        len(suite["languages"])
+        * len(suite["dataset"]["expected_subjects_reference"])
+        * suite["sampling_mode"]["items_per_stratum"]
+    )
+    assert Settings().max_items_per_run >= sampled_size

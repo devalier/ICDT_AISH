@@ -67,7 +67,10 @@ class Settings(BaseSettings):
     allow_private_endpoints: bool = True  # on-prem models live on private networks
     request_timeout_seconds: float = 120.0
     max_concurrent_requests: int = 4
-    max_items_per_run: int = 500
+    # Must exceed the largest run the instance is expected to accept. Sampled
+    # EU-MMLU alone is 3,200 items (16 languages x 8 subjects x 25); a full run is
+    # ~17,200. A run that would exceed this is refused, never silently shortened.
+    max_items_per_run: int = 5000
 
     @field_validator("cookie_samesite")
     @classmethod
