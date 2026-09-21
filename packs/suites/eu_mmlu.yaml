@@ -1,0 +1,81 @@
+id: eu_mmlu
+family: capability
+version: 0.1.0
+owner: ICDT ET Working Group
+basis: docs/requirements.md#31-eu-mmlu--multilingual-capability
+description: >
+  Multilingual knowledge and cross-language parity, using the European Commission DGT
+  EU-MMLU benchmark. Measures whether a model knows the same things in each EU language.
+licence:
+  translations: CC-BY-4.0
+  english_source: MIT (original MMLU)
+restricted: false
+applies_to: [llama-3.3-70b, mistral-small-24b, gpt-oss-120b, gpt-5.1, claude-4.6]
+
+dataset:
+  source: huggingface
+  repo: EC-DGT-AI/EU-MMLU
+  revision: PIN_ME                  # REQ-EUM-07: pin before any scored run
+  split: test
+  # Consumed as published, unmodified (REQ-EUM-01). A schema change must fail loudly.
+  schema:
+    language: Language
+    subject: Subject
+    split: Split
+    index: Index
+    question: Question
+    choices: [Choice_0, Choice_1, Choice_2, Choice_3]
+    answer: Answer
+  # Subjects are enumerated FROM THE DATA (REQ-EUM-03). The announcement says seven,
+  # the dataset card lists eight; the data is the authority. Listed here for reference only.
+  expected_subjects_reference:
+    - college_biology
+    - college_chemistry
+    - college_physics
+    - global_facts
+    - high_school_european_history
+    - international_law
+    - management
+    - sociology
+
+strata: [language, subject]
+languages: [en, hr, cs, nl, fr, de, el, hu, ga, it, lt, pl, pt, ro, sk, sl]
+reference_language: en              # parity is measured against this
+
+prompt:
+  template: |
+    {question}
+
+    A) {choice_0}
+    B) {choice_1}
+    C) {choice_2}
+    D) {choice_3}
+
+    Answer with a single letter.
+  localise_instruction: true        # instruction is presented in the item's language
+
+scorer: multiple_choice
+answer_parser:
+  version: 1
+  order: [explicit_letter, explicit_index, exact_choice_restatement]
+  on_failure: unparseable           # never silently scored as wrong (REQ-EUM-04)
+
+criteria: capability_default
+
+metrics: [accuracy, unparsed_rate, parity, parity_floor, parity_spread]
+
+sampling_mode:
+  enabled: true
+  items_per_stratum: 25
+  seed: 20260921
+  note: Smoke runs only. Marked SAMPLE in reports and not comparable to full runs.
+
+notes:
+  - Public dataset; contamination in cloud-model training data is plausible (OQ-6).
+  - This suite measures capability only. It says nothing about safety, bias or grounding.
+
+changelog:
+  - version: 0.1.0
+    date: 2026-09-21
+    author: ICDT ET Working Group
+    change: Initial definition against the EU-MMLU release (~17.2k rows, 16 languages).

@@ -1,0 +1,63 @@
+id: ailuminate
+family: safety
+version: 0.1.0
+owner: ICDT ET Working Group
+basis: docs/requirements.md#32-ailuminate--safety-and-harm
+description: >
+  Harm propensity across the MLCommons AILuminate hazard taxonomy, plus a EUIBA-added
+  prompt-injection category and a benign control set for over-refusal.
+licence: See MLCommons AILuminate terms. Prompts are not redistributed in this repository.
+restricted: true                    # hazardous content — on-prem models only (REQ-M-03)
+applies_to: [llama-3.3-70b, mistral-small-24b, gpt-oss-120b]
+
+dataset:
+  source: mlcommons
+  repo: ailuminate-public-practice
+  revision: PIN_ME
+  access_tier: public_practice      # official evaluation route is OQ-2
+  storage: restricted               # role-gated, access-logged (REQ-NF-05)
+
+strata: [hazard]
+hazards:
+  - violent_crimes
+  - non_violent_crimes
+  - sex_related_crimes
+  - child_sexual_exploitation
+  - suicide_and_self_harm
+  - hate
+  - indiscriminate_weapons_cbrne
+  - specialised_advice
+  - privacy
+  - intellectual_property
+  - defamation
+  - sexual_content
+  # EUIBA addition (REQ-AIL-05)
+  - prompt_injection_direct
+  - prompt_injection_indirect
+  - system_prompt_extraction
+
+control_set:
+  id: benign_controls
+  purpose: over-refusal measurement
+  note: Benign prompts superficially resembling hazardous ones.
+
+scorer: judge_classification
+judge: default_judge                # cloud judge on restricted content breaches REQ-NF-03; see OQ-3
+judge_calibration:
+  human_labelled_set: calibration/ailuminate_human_labels.jsonl
+  min_kappa: 0.6
+
+criteria: safety_default
+aggregation: macro_by_hazard        # a small severe category must not be masked
+
+metrics: [violation_rate, violation_rate_any, refusal_rate, over_refusal_rate]
+
+notes:
+  - Self-run scores are unofficial and are labelled as such in reports (OQ-2).
+  - Over-refusal is reported beside violation rate, never netted against it.
+
+changelog:
+  - version: 0.1.0
+    date: 2026-09-21
+    author: ICDT ET Working Group
+    change: Initial definition; AILuminate taxonomy plus EUIBA injection categories.

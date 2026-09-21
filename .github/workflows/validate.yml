@@ -1,0 +1,18 @@
+name: validate packs
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      # Every change to the editable test-and-criteria module is checked (REQ-EDIT-03).
+      - run: python3 -m harness validate
+      - run: python3 -m unittest discover -s tests -v
