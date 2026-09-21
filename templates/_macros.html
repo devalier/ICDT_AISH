@@ -1,0 +1,56 @@
+{% macro verdict(value) %}
+  {%- set labels = {'pass': 'Pass', 'watch': 'Watch', 'fail': 'Fail',
+                    'inconclusive': 'Inconclusive', 'no_data': 'No data'} -%}
+  <span class="verdict verdict-{{ value|default('no_data') }}">
+    <span class="dot"></span>{{ labels.get(value, 'No data') }}
+  </span>
+{% endmacro %}
+
+{#- A horizontal comparison bar. Geometry lives in SVG attributes, so the page
+    needs no inline styles and the CSP needs no 'unsafe-inline'. -#}
+{% macro hbar(label, value, formatted, maximum=1.0, threshold=None, watch=None) %}
+  <svg class="chart" viewBox="0 0 320 34" width="320" height="34" role="img"
+       aria-label="{{ label }}: {{ formatted }}">
+    <text class="series-label" x="0" y="11">{{ label }}</text>
+    <text class="value-label" x="320" y="11" text-anchor="end">{{ formatted }}</text>
+    <rect class="bar-track" x="0" y="18" width="320" height="10" rx="4"></rect>
+    {% if value is not none %}
+      <rect class="bar" x="0" y="18" width="{{ (value|bar(maximum, 320))|round(1) }}"
+            height="10" rx="4"></rect>
+    {% endif %}
+    {% if watch is not none %}
+      <line class="threshold-watch" x1="{{ (watch|bar(maximum, 320))|round(1) }}" y1="16"
+            x2="{{ (watch|bar(maximum, 320))|round(1) }}" y2="30"></line>
+    {% endif %}
+    {% if threshold is not none %}
+      <line class="threshold" x1="{{ (threshold|bar(maximum, 320))|round(1) }}" y1="16"
+            x2="{{ (threshold|bar(maximum, 320))|round(1) }}" y2="30"></line>
+    {% endif %}
+  </svg>
+{% endmacro %}
+
+{#- A dot with a bootstrap interval, against pass and watch thresholds. -#}
+{% macro dotplot(label, value, low, high, pass_at, watch_at, maximum=1.0, grade='no_data') %}
+  <svg class="chart" viewBox="0 0 360 52" width="360" height="52" role="img"
+       aria-label="{{ label }}: {{ value|num }} (interval {{ low|num }} to {{ high|num }})">
+    <text class="series-label" x="0" y="12">{{ label }}</text>
+    <text class="value-label" x="360" y="12" text-anchor="end">{{ value|num }}</text>
+    <line class="baseline" x1="0" y1="28" x2="360" y2="28"></line>
+    <text class="axis-label" x="0" y="46">0</text>
+    <text class="axis-label" x="360" y="46" text-anchor="end">{{ maximum }}</text>
+    {% if pass_at is not none %}
+      <line class="threshold-watch" x1="{{ (pass_at|bar(maximum, 360))|round(1) }}" y1="20"
+            x2="{{ (pass_at|bar(maximum, 360))|round(1) }}" y2="36"></line>
+    {% endif %}
+    {% if watch_at is not none %}
+      <line class="threshold" x1="{{ (watch_at|bar(maximum, 360))|round(1) }}" y1="20"
+            x2="{{ (watch_at|bar(maximum, 360))|round(1) }}" y2="36"></line>
+    {% endif %}
+    {% if low is not none and high is not none %}
+      <line class="whisker" x1="{{ (low|bar(maximum, 360))|round(1) }}" y1="28"
+            x2="{{ (high|bar(maximum, 360))|round(1) }}" y2="28"></line>
+    {% endif %}
+    <circle class="dot-mark dot-{{ grade|default('no_data') }}"
+            cx="{{ (value|bar(maximum, 360))|round(1) }}" cy="28" r="6"></circle>
+  </svg>
+{% endmacro %}

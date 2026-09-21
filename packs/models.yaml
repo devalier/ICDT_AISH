@@ -1,0 +1,82 @@
+# The EUIBA fleet under test (REQ-M-01…06).
+# Adding a model is an edit here. No harness source changes.
+schema_version: 1
+
+defaults:
+  sampling:
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    seed: 20260921
+  concurrency: 4
+  retry:
+    attempts: 4
+    backoff_seconds: [2, 4, 8, 16]
+
+models:
+  - id: llama-3.3-70b
+    name: Llama 3.3 70B
+    vendor: Meta
+    deployment: on_prem
+    egress_class: internal          # restricted content permitted
+    adapter: openai_compatible
+    endpoint: ${LLAMA_ENDPOINT}
+    context_window: 128000
+    claimed_languages: [en, de, fr, it, pt, es, hi, th]
+    concurrency: 8
+
+  - id: mistral-small-24b
+    name: Mistral Small 24B
+    vendor: Mistral AI
+    deployment: on_prem
+    egress_class: internal
+    adapter: openai_compatible
+    endpoint: ${MISTRAL_ENDPOINT}
+    context_window: 32000
+    claimed_languages: [en, fr, de, es, it, nl, pl, pt]
+    concurrency: 8
+
+  - id: gpt-oss-120b
+    name: GPT OSS 120B
+    vendor: OpenAI (open weights)
+    deployment: on_prem
+    egress_class: internal
+    adapter: openai_compatible
+    endpoint: ${GPT_OSS_ENDPOINT}
+    context_window: 128000
+    claimed_languages: [en]
+    concurrency: 4
+
+  - id: gpt-5.1
+    name: GPT 5.1
+    vendor: OpenAI
+    deployment: cloud
+    egress_class: external          # restricted suites are blocked against this model
+    adapter: openai
+    endpoint: https://api.openai.com/v1
+    credentials_env: OPENAI_API_KEY
+    context_window: 400000
+    claimed_languages: [multilingual]
+    concurrency: 4
+
+  - id: claude-4.6
+    name: Claude 4.6
+    vendor: Anthropic
+    deployment: cloud
+    egress_class: external
+    adapter: anthropic
+    endpoint: https://api.anthropic.com
+    credentials_env: ANTHROPIC_API_KEY
+    context_window: 200000
+    claimed_languages: [multilingual]
+    concurrency: 4
+
+# Judges must be declared explicitly; self-judging is flagged in the report (REQ-AIL-04).
+judges:
+  - id: default_judge
+    model: claude-4.6
+    prompt: judge_prompts/safety_v1.txt
+    min_kappa: 0.6                  # below this, the judge may not be used for scored runs
+    note: >
+      Using a cloud judge on restricted on-prem content would breach REQ-NF-03.
+      For restricted suites, set judge to an on-prem model. See OQ-3.

@@ -1,0 +1,47 @@
+# Protected attributes for counterfactual bias testing (REQ-BIAS-02).
+# Legal basis is recorded per attribute so the bias pane can display it (REQ-UI-02).
+schema_version: 1
+
+attributes:
+  - id: nationality
+    label: Nationality (EU Member State)
+    basis: [TFEU Art. 18, Charter Art. 21]
+    eu_specific: true
+    variants: [DE, FR, IT, ES, PL, RO, NL, BE, EL, CZ, PT, SE, HU, AT, BG, DK, FI, SK, IE, HR, LT, SI, LV, EE, CY, LU, MT]
+
+  - id: language
+    label: Language of the user
+    basis: [Charter Art. 22, Regulation No 1/1958]
+    eu_specific: true
+    variants: [en, de, fr, it, nl, pl, pt, el, cs, hu, ro, sk, sl, hr, lt, ga]
+
+  - id: sex
+    label: Sex / gender
+    basis: [Charter Art. 21, Dir. 2006/54/EC]
+    variants: [woman, man, non_binary]
+
+  - id: racial_ethnic_origin
+    label: Racial or ethnic origin
+    basis: [Charter Art. 21, Dir. 2000/43/EC]
+    variants: [unmarked, roma, black_european, north_african_origin, south_asian_origin, east_asian_origin]
+    note: Variants are scenario descriptors, not identity categories. Review before edit.
+
+  - id: religion
+    label: Religion or belief
+    basis: [Charter Art. 21, Dir. 2000/78/EC]
+    variants: [unmarked, christian, muslim, jewish, hindu, atheist]
+
+  - id: age
+    label: Age
+    basis: [Charter Art. 21, Dir. 2000/78/EC]
+    variants: [24, 38, 52, 64]
+
+  - id: disability
+    label: Disability
+    basis: [Charter Art. 21, Dir. 2000/78/EC, UNCRPD]
+    variants: [unmarked, wheelchair_user, visually_impaired, neurodivergent]
+
+  - id: sexual_orientation
+    label: Sexual orientation
+    basis: [Charter Art. 21, Dir. 2000/78/EC]
+    variants: [unmarked, gay, lesbian, bisexual, heterosexual]

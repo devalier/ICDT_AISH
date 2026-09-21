@@ -1,0 +1,41 @@
+# systemd unit for a bare-metal deployment (no containers).
+# Place the checkout at /opt/aish with a virtualenv at /opt/aish/.venv.
+
+[Unit]
+Description=EUIBA AI Safety Harness
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=aish
+Group=aish
+WorkingDirectory=/opt/aish
+EnvironmentFile=/etc/aish/aish.env
+ExecStart=/opt/aish/.venv/bin/uvicorn aish.app:app \
+    --host 127.0.0.1 --port 8000 \
+    --proxy-headers --forwarded-allow-ips 127.0.0.1 \
+    --no-server-header --workers 2
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadWritePaths=/var/lib/aish
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

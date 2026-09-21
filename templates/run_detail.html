@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% from "_macros.html" import verdict, hbar, dotplot %}
+{% set active = 'runs' %}
+{% block title %}Run {{ run.id }} — {{ run.suite_id }}{% endblock %}
+{% block content %}
+
+<h1>{{ run.suite_id }} <span class="muted">· run {{ run.id }}</span></h1>
+<p class="lede">
+  {{ target.label if target else 'deleted target' }} ·
+  suite v{{ run.suite_version }} ·
+  {% if run.sample_mode %}<span class="tag">sample</span> not comparable to a full run{% else %}full run{% endif %}
+</p>
+
+{% if run.status in ('queued', 'running') %}
+  <div class="card" data-run-poll="/runs/{{ run.id }}/status">
+    <h2>In progress</h2>
+    <svg class="progress-svg" viewBox="0 0 100 10" preserveAspectRatio="none" role="img"
+         aria-label="Run progress">
+      <rect class="progress-track" x="0" y="0" width="100" height="10" rx="5"></rect>
+      <rect class="progress-fill" data-progress-bar x="0" y="0"
+            width="{{ ((run.items_done / run.items_total * 100) if run.items_total else 0)|round(1) }}"
+            height="10" rx="5"></rect>
+    </svg>
+    <p class="small" data-progress-text>{{ run.items_done }} of {{ run.items_total }} items — {{ run.status }}</p>
+  </div>
+{% endif %}
+
+{% if run.status == 'failed' %}
+  <div class="error-box"><strong>Run failed</strong>{{ run.error }}</div>
+{% endif %}
+
+{% if run.status == 'done' %}
+  <div class="stat-row">
+    <div class="stat"><div class="k">Overall</div><div class="v">{{ verdict(summary.get('verdict')) }}</div></div>
+    <div class="stat"><div class="k">Items scored</div><div class="v">{{ summary.get('n', 0) }}</div></div>
+    <div class="stat"><div class="k">Refusals</div><div class="v">{{ summary.get('refused', 0) }}</div></div>
+    <div class="stat"><div class="k">Errors</div><div class="v">{{ summary.get('errors', 0) }}</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Metrics</h2>
+    <p class="muted small">
+      Graded against <span class="mono">{{ suite.criteria }}</span> in
+      <a href="/panes/scoring">packs/criteria.yaml</a>. Definitions are on the
+      <a href="/panes/scoring">scoring pane</a>.
+    </p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th class="num">Value</th><th class="num">Pass</th>
+              <th class="num">Watch</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+        {% for name, value in summary.get('metrics', {}).items() %}
+          {% set bands = criteria.get('metrics', {}).get(name, {}) %}
+          <tr>
+            <td class="mono">{{ name }}</td>
+            <td class="num">{{ value|num(3) }}</td>
+            <td class="num muted">{{ bands.get('pass')|num(2) if bands.get('pass') is not none else '—' }}</td>
+            <td class="num muted">{{ bands.get('watch')|num(2) if bands.get('watch') is not none else '—' }}</td>
+            <td>{{ verdict(summary.get('verdicts', {}).get(name)) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if summary.get('strata') %}
+    <div class="card">
+      {% if run.family == 'grounding' %}
+        <h2>Outcome distribution</h2>
+        <p class="muted small">
+          Share of responses in each outcome class. Correct abstention counts positively.
+        </p>
+      {% else %}
+        <h2>By stratum</h2>
+        <p class="muted small">
+          Strata are macro-averaged into the family score, so a large stratum cannot mask a
+          small one. Intervals are Wilson score at 95%.
+        </p>
+      {% endif %}
+      {% for stratum in summary.strata %}
+        {{ hbar(stratum.key ~ '  (n=' ~ stratum.n ~ ')', stratum.value,
+                stratum.value|num(3), 1.0) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if summary.get('groups') %}
+    <div class="card">
+      <h2>Counterfactual groups</h2>
+      <p class="muted small">
+        Measured as the spread across each matched group, never the absolute value of any
+        variant. Bars are the bootstrap interval ({{ summary.get('bootstrap_resamples') }} resamples,
+        fixed seed{% if summary.get('bootstrap_capped_from') %}, capped from
+        {{ summary.bootstrap_capped_from }} for interactive display{% endif %}).
+        The dashed marks are the pass and fail thresholds. Basis:
+        <a href="/panes/bias">bias pane</a>.
+      </p>
+      {% for group in summary.groups %}
+        {{ dotplot(group.probe_id, group.disparity, group.ci[0], group.ci[1],
+                   criteria.get('metrics', {}).get(group.metric, {}).get('pass'),
+                   criteria.get('metrics', {}).get(group.metric, {}).get('watch'),
+                   1.0, summary.get("verdicts", {}).get(group.metric, "no_data")) }}
+        <details>
+          <summary class="small">Per-variant table — {{ group.variants|length }} variants</summary>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Variant</th><th class="num">Rate</th><th class="num">Refusal</th><th class="num">n</th></tr></thead>
+              <tbody>
+              {% for variant in group.variants %}
+                <tr>
+                  <td class="mono">{{ variant.variant }}</td>
+                  <td class="num">{{ variant.rate|num(3) }}</td>
+                  <td class="num">{{ variant.refusal|num(3) }}</td>
+                  <td class="num">{{ variant.n }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endif %}
+
+<div class="card">
+  <h2>Outcomes</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Outcome</th><th class="num">Count</th><th></th></tr></thead>
+      <tbody>
+      {% for outcome, count in outcome_counts.items() %}
+        <tr>
+          <td class="mono">{{ outcome }}</td>
+          <td class="num">{{ count }}</td>
+          <td><a href="/runs/{{ run.id }}/evidence?outcome={{ outcome }}">View evidence</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p><a class="button secondary small" href="/runs/{{ run.id }}/evidence">All prompts and responses</a></p>
+</div>
+
+{% if failures %}
+  <div class="card">
+    <h2>Request failures</h2>
+    <p class="muted small">Transport and authentication failures, kept distinct from model refusals.</p>
+    {% for failure in failures %}
+      <p class="small mono">{{ failure.item_id }}: {{ failure.error }}</p>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2>Run manifest</h2>
+  <p class="muted small">
+    Two results are comparable only when every line below matches.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <tbody>
+      {% for key, value in manifest.items() %}
+        <tr><td class="mono">{{ key }}</td><td class="mono">{{ value }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}<script src="/static/app.js"></script>{% endblock %}

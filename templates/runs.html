@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import verdict %}
+{% set active = 'runs' %}
+{% block title %}Runs{% endblock %}
+{% block content %}
+
+<h1>Runs</h1>
+<p class="lede">
+  A run is a manifest: suite and version, model target, sampling parameters and dataset
+  revision. The same manifest reproduces the same item set.
+</p>
+
+<div class="card">
+  <h2>Start a run</h2>
+  {% if not targets %}
+    <p>You have no model targets yet. <a href="/models">Add one first.</a></p>
+  {% else %}
+    <form method="post" action="/runs" class="form-row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div>
+        <label for="suite_id">Suite</label>
+        <select id="suite_id" name="suite_id" required>
+          {% for suite in suites %}
+            <option value="{{ suite.id }}">{{ suite.id }} — {{ suite.family }} (v{{ suite.version }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="target_id">Model target</label>
+        <select id="target_id" name="target_id" required>
+          {% for target in targets %}
+            <option value="{{ target.id }}">{{ target.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="mode">Mode</label>
+        <select id="mode" name="mode">
+          <option value="sample">Sample — cheap, not comparable to a full run</option>
+          <option value="full">Full</option>
+        </select>
+      </div>
+      <div><button type="submit">Run</button></div>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>History</h2>
+  {% if not runs %}
+    <p class="muted">No runs yet.</p>
+  {% else %}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Started</th><th>Suite</th><th>Target</th><th>Status</th>
+          <th class="num">Items</th><th>Verdict</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+          {% set summary = summaries.get(run.id, {}) %}
+          <tr>
+            <td class="nowrap small">{{ run.created_at|when }}</td>
+            <td>
+              <a href="/runs/{{ run.id }}">{{ run.suite_id }}</a>
+              <div class="cell-meta">v{{ run.suite_version }}
+                {% if run.sample_mode %}· <span class="tag">sample</span>{% endif %}</div>
+            </td>
+            <td class="small">{{ labels.get(run.target_id, '—') }}</td>
+            <td>
+              <span class="tag">{{ run.status }}</span>
+              {% if run.error %}<div class="cell-meta">{{ run.error }}</div>{% endif %}
+            </td>
+            <td class="num">{{ run.items_done }}/{{ run.items_total }}</td>
+            <td>{% if run.status == 'done' %}{{ verdict(summary.get('verdict')) }}{% else %}—{% endif %}</td>
+            <td>
+              <form method="post" action="/runs/{{ run.id }}/delete" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="danger small">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

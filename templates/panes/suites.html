@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% set active = 'suites' %}
+{% block title %}Test suites{% endblock %}
+{% block content %}
+
+<h1>Test suites</h1>
+<p class="lede">
+  Every test, probe, threshold and pass/fail criterion lives in <span class="mono">packs/</span>
+  as YAML under version control. Nothing there is code. This pane renders the live files, so
+  what you read is what the next run will execute.
+</p>
+
+<div class="card">
+  <h2>How the Working Group edits these</h2>
+  <ol>
+    <li>Change the YAML in <span class="mono">packs/</span>.</li>
+    <li>Run <span class="mono">python3 -m harness validate</span> — it names the file, the path
+      inside it and what is wrong.</li>
+    <li>Bump the suite version. A major bump if the change affects comparability of scores.</li>
+    <li>Add a changelog entry saying what changed and why.</li>
+    <li>Open a pull request. Working Group review is the approval gate.</li>
+  </ol>
+</div>
+
+{% set errors = problems | selectattr('severity', 'equalto', 'error') | list %}
+{% set warnings = problems | rejectattr('severity', 'equalto', 'error') | list %}
+
+{% if errors %}
+  <div class="error-box">
+    <strong>Validation errors — these suites will not run</strong>
+    {% for problem in errors %}<div class="mono small">{{ problem }}</div>{% endfor %}
+  </div>
+{% endif %}
+{% if warnings %}
+  <div class="notice">
+    <strong>Warnings — runnable, but not fit for a scored run</strong>
+    {% for problem in warnings %}<div class="mono small">{{ problem }}</div>{% endfor %}
+  </div>
+{% endif %}
+
+{% for suite in suites %}
+  <div class="card">
+    <h2><a href="/panes/suites/{{ suite.id }}" class="mono">{{ suite.id }}</a>
+      <span class="tag">{{ suite.family }}</span>
+      {% if suite.restricted %}<span class="tag">restricted</span>{% endif %}
+    </h2>
+    <p class="small">{{ suite.description }}</p>
+    <ul class="pill-row">
+      <li>v{{ suite.version }}</li>
+      <li class="mono">{{ suite.scorer }}</li>
+      <li class="mono">{{ suite.criteria }}</li>
+      <li>{{ suite.owner }}</li>
+    </ul>
+    <p class="small muted">Basis: {{ suite.basis }}</p>
+    {% if suite.restricted %}
+      <p class="small">
+        Restricted: this suite's probe content may not leave EUIBA infrastructure, so it cannot
+        target a cloud model. The validator rejects the pack if it does.
+      </p>
+    {% endif %}
+  </div>
+{% endfor %}
+
+<div class="card">
+  <h2>Reference fleet</h2>
+  <p class="muted small">From <span class="mono">packs/models.yaml</span>. Your own targets are on the <a href="/models">My models</a> pane.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Model</th><th>Vendor</th><th>Deployment</th><th>Egress class</th></tr></thead>
+      <tbody>
+      {% for model in fleet %}
+        <tr>
+          <td><strong>{{ model.name }}</strong><div class="cell-meta mono">{{ model.id }}</div></td>
+          <td class="small">{{ model.vendor }}</td>
+          <td><span class="tag">{{ model.deployment }}</span></td>
+          <td class="small">{{ model.egress_class }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

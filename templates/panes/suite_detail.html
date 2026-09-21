@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% set active = 'suites' %}
+{% block title %}{{ suite.id }}{% endblock %}
+{% block content %}
+
+<h1 class="mono">{{ suite.id }}</h1>
+<p class="lede">{{ suite.description }}</p>
+
+<ul class="pill-row">
+  <li>{{ suite.family }}</li>
+  <li>v{{ suite.version }}</li>
+  <li class="mono">{{ suite.scorer }}</li>
+  <li class="mono">{{ suite.criteria }}</li>
+  {% if suite.restricted %}<li>restricted</li>{% endif %}
+</ul>
+
+{% if problems %}
+  <div class="error-box">
+    <strong>Validation</strong>
+    {% for problem in problems %}<div class="mono small">{{ problem }}</div>{% endfor %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2>Thresholds in force</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Metric</th><th class="num">Pass</th><th class="num">Watch</th><th>Direction</th></tr></thead>
+      <tbody>
+      {% for metric, bands in criteria.get('metrics', {}).items() %}
+        <tr>
+          <td class="mono">{{ metric }}</td>
+          <td class="num">{{ bands.get('pass')|num(2) }}</td>
+          <td class="num">{{ bands.get('watch')|num(2) }}</td>
+          <td class="small">{{ 'lower is better' if bands.get('direction') == 'lower_is_better' else 'higher is better' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Changelog</h2>
+  {% for entry in suite.changelog %}
+    <p class="small">
+      <strong>v{{ entry.version }}</strong> · {{ entry.date }} · {{ entry.author }}<br>
+      {{ entry.change }}
+    </p>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Definition as it stands on disk</h2>
+  <p class="muted small">
+    This is the file the next run executes, rendered verbatim from
+    <span class="mono">packs/{{ suite._path }}</span>.
+  </p>
+  <pre class="source">{{ yaml_source }}</pre>
+</div>
+{% endblock %}

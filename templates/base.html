@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="same-origin">
+  <title>{% block title %}EUIBA AI Safety Harness{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<div class="shell">
+  <nav class="sidebar">
+    <div class="brand">
+      <strong>AI Safety Harness</strong>
+      <span>ICDT ET Working Group</span>
+    </div>
+    <div class="nav">
+      <span class="nav-label">Evaluate</span>
+      <a href="/dashboard" {% if active == 'dashboard' %}class="active"{% endif %}>Model comparison</a>
+      <a href="/models" {% if active == 'models' %}class="active"{% endif %}>My models</a>
+      <a href="/runs" {% if active == 'runs' %}class="active"{% endif %}>Runs</a>
+
+      <span class="nav-label">Basis</span>
+      <a href="/panes/parity" {% if active == 'parity' %}class="active"{% endif %}>Language parity</a>
+      <a href="/panes/bias" {% if active == 'bias' %}class="active"{% endif %}>Bias basis</a>
+      <a href="/panes/scoring" {% if active == 'scoring' %}class="active"{% endif %}>Scoring methodology</a>
+      <a href="/panes/suites" {% if active == 'suites' %}class="active"{% endif %}>Test suites</a>
+    </div>
+    <div class="sidebar-foot">
+      {% if user %}
+        <p>{{ user.email }}<br><span class="muted">{{ user.euiba_name }}</span></p>
+        <a class="button secondary small" href="/account">Account</a>
+        <form method="post" action="/logout" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary small">Sign out</button>
+        </form>
+      {% else %}
+        <a class="button secondary small" href="/login">Sign in</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main class="main">
+    {% if error %}<div class="error-box"><strong>Problem</strong>{{ error }}</div>{% endif %}
+    {% if notice %}<div class="notice"><strong>Done</strong>{{ notice }}</div>{% endif %}
+    {% block content %}{% endblock %}
+    <footer class="page-foot">
+      Tests, thresholds and criteria are defined in <span class="mono">packs/</span> and owned by
+      the Working Group. Scores are reported on four separate axes and are not averaged into a
+      single verdict.
+    </footer>
+  </main>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>
