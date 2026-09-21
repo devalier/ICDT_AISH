@@ -28,6 +28,11 @@ CONTENT_SECURITY_POLICY = "; ".join(
 
 _MAX_BODY_BYTES = 1_000_000
 
+# The container and orchestrator probe this by address, not by the public name, so
+# host validation would fail every health check. The endpoint returns a fixed string
+# and reveals nothing, so exempting it costs nothing.
+_HOST_CHECK_EXEMPT = frozenset({"/healthz"})
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -63,7 +68,7 @@ class RequestGuardMiddleware(BaseHTTPMiddleware):
         self.allowed_hosts = allowed_hosts
 
     async def dispatch(self, request: Request, call_next):
-        if self.allowed_hosts:
+        if self.allowed_hosts and request.url.path not in _HOST_CHECK_EXEMPT:
             host = (request.headers.get("host") or "").split(":")[0].lower()
             if host and host not in self.allowed_hosts:
                 return PlainTextResponse("Unrecognised host.", status_code=400)

@@ -24,7 +24,10 @@ aish.devalier.com {
 	}
 }
 
-# Anything arriving on another name is refused rather than served.
-:80, :443 {
+# Plain HTTP to the bare address (scanners, misconfigured clients) gets a short
+# answer rather than the application. Unmatched TLS is refused by Caddy before it
+# reaches a site block, and the application itself returns 400 for an unexpected
+# Host header, so no :443 fallback is needed here.
+:80 {
 	respond "Unrecognised host." 400
 }

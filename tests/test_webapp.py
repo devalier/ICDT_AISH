@@ -384,3 +384,38 @@ def test_parity_pane_loads_without_runs(client, register):
     page = client.get("/panes/parity")
     assert page.status_code == 200
     assert "parity floor" in page.text.lower()
+
+
+def test_the_health_probe_answers_without_the_public_host(client):
+    """The container health check probes by address. Host validation must not fail
+    it, or the container is permanently unhealthy in production."""
+    response = client.get("/healthz", headers={"host": "127.0.0.1:8000"})
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_under_production_hosts_only_healthz_is_exempt(monkeypatch):
+    """Development allows localhost, so the exemption has to be checked against a
+    production configuration — which is where it matters."""
+    from fastapi.testclient import TestClient
+
+    from aish import config
+    from aish.app import create_app
+
+    monkeypatch.setenv("AISH_ENV", "production")
+    monkeypatch.setenv("AISH_SECRET_KEY", "p" * 40)
+    monkeypatch.setenv("AISH_ENCRYPTION_KEY", "q" * 40)
+    monkeypatch.setenv("AISH_PUBLIC_HOST", "aish.devalier.com")
+    monkeypatch.setenv("AISH_COOKIE_SECURE", "true")  # the fixture relaxes this for dev
+    config.get_settings.cache_clear()
+    try:
+        with TestClient(create_app(), base_url="http://127.0.0.1:8000") as probe:
+            assert probe.get("/healthz").status_code == 200
+            for path in ["/", "/login", "/static/app.css"]:
+                assert probe.get(path, follow_redirects=False).status_code == 400, path
+            # And the real public host is served normally.
+            assert probe.get(
+                "/login", headers={"host": "aish.devalier.com"}
+            ).status_code == 200
+    finally:
+        config.get_settings.cache_clear()

@@ -660,9 +660,50 @@ async def _execute(run_id: int) -> None:
             run.error = rows[0].error or "every request to the model failed"
 
 
+# The event loop the application runs on, captured at start-up.
+#
+# A sync FastAPI route executes in an AnyIO worker thread, which has no event loop
+# of its own, so a run cannot be scheduled from there without a reference to the
+# loop that does. Holding one here is what lets a synchronous route hand work to the
+# loop and return immediately.
+_loop: asyncio.AbstractEventLoop | None = None
+
+# asyncio keeps only weak references to tasks, so a task with no other reference can
+# be garbage collected mid-run. These references are what keep a run alive.
+_pending: set = set()
+
+
+def bind_event_loop(loop: asyncio.AbstractEventLoop) -> None:
+    global _loop
+    _loop = loop
+
+
+class RunNotScheduled(RunError):
+    """The run row exists but could not be handed to the event loop."""
+
+
 def queue_run(run_id: int) -> None:
-    """Schedule a run on the running event loop."""
-    asyncio.get_event_loop().create_task(execute_run(run_id))
+    """Schedule a run, from either an async or a synchronous caller."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None:  # already on the loop
+        task = loop.create_task(execute_run(run_id))
+        _pending.add(task)
+        task.add_done_callback(_pending.discard)
+        return
+
+    if _loop is None or _loop.is_closed():
+        raise RunNotScheduled(
+            "The application is not ready to execute runs. Try again in a moment."
+        )
+
+    # Called from a worker thread: hand the coroutine to the application's loop.
+    future = asyncio.run_coroutine_threadsafe(execute_run(run_id), _loop)
+    _pending.add(future)
+    future.add_done_callback(_pending.discard)
 
 
 def utc_iso(value: datetime | None) -> str:

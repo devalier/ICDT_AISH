@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import BASE_DIR, get_settings
 from .db import init_db
+from .runner import bind_event_loop
 from .web import auth, panes, runs, targets
 from .web.deps import templates
 from .web.middleware import RequestGuardMiddleware, SecurityHeadersMiddleware
@@ -21,6 +23,9 @@ log = logging.getLogger("aish")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Sync routes run in a worker thread with no loop of their own; they need a
+    # reference to this one in order to schedule a run.
+    bind_event_loop(asyncio.get_running_loop())
     log.info("%s started (env=%s)", app.title, get_settings().env)
     yield
 

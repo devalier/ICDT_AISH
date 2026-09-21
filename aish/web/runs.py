@@ -142,7 +142,15 @@ def start_run(
           detail=f"{suite_id} -> {target.label}")
     db.commit()
 
-    queue_run(run_id)
+    try:
+        queue_run(run_id)
+    except RunError as exc:
+        with_failure = db.get(Run, run_id)
+        if with_failure is not None:
+            with_failure.status = "failed"
+            with_failure.error = str(exc)[:600]
+        return fail(str(exc), 503)
+
     return RedirectResponse(f"/runs/{run_id}", status_code=303)
 
 
