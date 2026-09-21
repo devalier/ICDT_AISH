@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% from "_macros.html" import verdict, hbar %}
+{% set active = 'dashboard' %}
+{% block title %}Model comparison{% endblock %}
+{% block content %}
+
+<h1>Model comparison</h1>
+<p class="lede">
+  Four axes, reported separately. A model can be strong on one and unacceptable on another,
+  so the harness does not average them into a single verdict. Every figure below links to the
+  run that produced it, and from there to the prompts and responses behind it.
+</p>
+
+{% if pack_problems %}
+  {% set errors = pack_problems | selectattr('severity', 'equalto', 'error') | list %}
+  {% if errors %}
+    <div class="error-box">
+      <strong>The test definitions currently fail validation</strong>
+      Results are not trustworthy until this is fixed.
+      {% for problem in errors[:4] %}<div class="mono small">{{ problem }}</div>{% endfor %}
+    </div>
+  {% endif %}
+{% endif %}
+
+{% if not targets %}
+  <div class="card">
+    <h2>No models configured</h2>
+    <p>
+      Point the harness at a model before running anything. You supply the endpoint and your own
+      API key; the key is encrypted at rest and is never shown back to you or to anyone else.
+    </p>
+    <a class="button" href="/models">Add a model</a>
+  </div>
+{% else %}
+
+<div class="card">
+  <div class="table-scroll">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Model target</th>
+          {% for family in families %}
+            <th>{{ family|capitalize }}<div class="cell-meta">{{ headline[family][1] }}</div></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in grid %}
+        <tr>
+          <td>
+            <strong>{{ row.target.label }}</strong>
+            <div class="cell-meta mono">{{ row.target.model_name }}</div>
+            <div class="cell-meta">{{ row.target.provider }}</div>
+          </td>
+          {% for cell in row.cells %}
+            <td class="cell">
+              {% if cell.run %}
+                <div class="cell-value">
+                  {% if cell.direction == 'lower' %}{{ cell.value|pct }}{% else %}{{ cell.value|num(2) }}{% endif %}
+                </div>
+                {{ verdict(cell.verdict) }}
+                <div class="cell-meta">
+                  n={{ cell.n }}{% if cell.sample_mode %} · <span class="tag">sample</span>{% endif %}
+                </div>
+                <div class="cell-meta"><a href="/runs/{{ cell.run.id }}">View run</a></div>
+              {% else %}
+                <div class="cell-value muted">—</div>
+                <div class="cell-meta">Not run</div>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted small">
+    A sample run is not comparable to a full run and is labelled as such throughout.
+    Two results are comparable only when suite version, dataset revision, scorer, judge and
+    sampling parameters all match.
+  </p>
+</div>
+
+{% for family in families %}
+  {% set cells = [] %}
+  {% for row in grid %}
+    {% for cell in row.cells %}
+      {% if cell.family == family and cell.run %}
+        {% set _ = cells.append({'label': row.target.label, 'cell': cell}) %}
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+  {% if cells %}
+    <div class="card">
+      <h2>{{ family|capitalize }} — {{ headline[family][1] }}</h2>
+      <p class="muted small">
+        {% if headline[family][2] == 'lower' %}Lower is better.{% else %}Higher is better.{% endif %}
+        {% if thresholds.get(family) %}The dashed marks are the pass (amber) and watch (red)
+        thresholds from <a href="/panes/scoring">packs/criteria.yaml</a>.{% endif %}
+      </p>
+      {% set bands = thresholds.get(family, {}) %}
+      {% for entry in cells %}
+        {{ hbar(entry.label, entry.cell.value,
+                (entry.cell.value|pct if headline[family][2] == 'lower' else entry.cell.value|num(2)),
+                1.0, bands.get('watch'), bands.get('pass')) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endfor %}
+
+<div class="stat-row">
+  <div class="stat"><div class="k">Model targets</div><div class="v">{{ targets|length }}</div></div>
+  <div class="stat"><div class="k">Families</div><div class="v">4</div></div>
+  <div class="stat">
+    <div class="k">Test definitions</div>
+    <div class="v">{{ 'valid' if not pack_problems|selectattr('severity','equalto','error')|list else 'invalid' }}</div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

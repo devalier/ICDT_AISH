@@ -1,5 +1,14 @@
 __pycache__/
 *.pyc
 .venv/
+venv/
+
+# Runtime state and evidence
+data/
 runs/
 private/
+
+# Secrets
+.env
+*.pem
+*.key

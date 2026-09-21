@@ -1,0 +1,70 @@
+# EU Institutions, Bodies and Agencies offered in the registration drop-list.
+# Editable by the Working Group like every other pack file.
+schema_version: 1
+
+groups:
+  - name: Institutions
+    entries:
+      - {id: EP, name: European Parliament}
+      - {id: EUCO, name: European Council}
+      - {id: CONSILIUM, name: Council of the European Union}
+      - {id: COM, name: European Commission}
+      - {id: CJEU, name: Court of Justice of the European Union}
+      - {id: ECB, name: European Central Bank}
+      - {id: ECA, name: European Court of Auditors}
+
+  - name: Bodies
+    entries:
+      - {id: EEAS, name: European External Action Service}
+      - {id: EESC, name: European Economic and Social Committee}
+      - {id: COR, name: European Committee of the Regions}
+      - {id: EIB, name: European Investment Bank}
+      - {id: EIF, name: European Investment Fund}
+      - {id: OMBUDSMAN, name: European Ombudsman}
+      - {id: EDPS, name: European Data Protection Supervisor}
+      - {id: EDPB, name: European Data Protection Board}
+      - {id: EPPO, name: European Public Prosecutor's Office}
+      - {id: OLAF, name: European Anti-Fraud Office}
+
+  - name: Agencies
+    entries:
+      - {id: ACER, name: Agency for the Cooperation of Energy Regulators}
+      - {id: AI_OFFICE, name: European AI Office}
+      - {id: BEREC, name: Body of European Regulators for Electronic Communications}
+      - {id: CDT, name: Translation Centre for the Bodies of the EU}
+      - {id: CEDEFOP, name: European Centre for the Development of Vocational Training}
+      - {id: CEPOL, name: EU Agency for Law Enforcement Training}
+      - {id: EASA, name: European Union Aviation Safety Agency}
+      - {id: EASO, name: European Union Agency for Asylum}
+      - {id: EBA, name: European Banking Authority}
+      - {id: ECDC, name: European Centre for Disease Prevention and Control}
+      - {id: ECHA, name: European Chemicals Agency}
+      - {id: EEA, name: European Environment Agency}
+      - {id: EFCA, name: European Fisheries Control Agency}
+      - {id: EFSA, name: European Food Safety Authority}
+      - {id: EIGE, name: European Institute for Gender Equality}
+      - {id: EIOPA, name: European Insurance and Occupational Pensions Authority}
+      - {id: EIT, name: European Institute of Innovation and Technology}
+      - {id: ELA, name: European Labour Authority}
+      - {id: EMA, name: European Medicines Agency}
+      - {id: EMCDDA, name: European Union Drugs Agency}
+      - {id: EMSA, name: European Maritime Safety Agency}
+      - {id: ENISA, name: European Union Agency for Cybersecurity}
+      - {id: ERA, name: European Union Agency for Railways}
+      - {id: ESMA, name: European Securities and Markets Authority}
+      - {id: ETF, name: European Training Foundation}
+      - {id: EU_LISA, name: EU Agency for the Operational Management of Large-Scale IT Systems}
+      - {id: EUIPO, name: European Union Intellectual Property Office}
+      - {id: EUROFOUND, name: European Foundation for the Improvement of Living and Working Conditions}
+      - {id: EUROJUST, name: European Union Agency for Criminal Justice Cooperation}
+      - {id: EUROPOL, name: European Union Agency for Law Enforcement Cooperation}
+      - {id: EUSPA, name: European Union Agency for the Space Programme}
+      - {id: FRA, name: European Union Agency for Fundamental Rights}
+      - {id: FRONTEX, name: European Border and Coast Guard Agency}
+      - {id: OSHA, name: European Agency for Safety and Health at Work}
+      - {id: SRB, name: Single Resolution Board}
+
+  - name: Other
+    entries:
+      - {id: ICDT, name: Interinstitutional Committee for Digital Transformation}
+      - {id: OTHER, name: Other EU institution, body or agency}

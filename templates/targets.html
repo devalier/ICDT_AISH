@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% set active = 'models' %}
+{% block title %}My models{% endblock %}
+{% block content %}
+
+<h1>My models</h1>
+<p class="lede">
+  Point the harness at the models you are responsible for. Each target carries your own
+  credential: it is encrypted with AES-256-GCM before it is stored, bound to your account, and
+  never rendered back — not to you, not to an administrator, not into a log.
+</p>
+
+<div class="card">
+  <h2>Add a model target</h2>
+  <form method="post" action="/models" class="stack" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <div class="form-row">
+      <div>
+        <label for="label">Name <span class="hint">How it appears in your reports.</span></label>
+        <input id="label" name="label" type="text" required maxlength="120"
+               value="{{ form.label|default('') }}">
+      </div>
+      <div>
+        <label for="provider">Provider</label>
+        <select id="provider" name="provider" required>
+          {% for pid, spec in providers.items() %}
+            <option value="{{ pid }}" {% if form.provider == pid %}selected{% endif %}>{{ spec.label }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">
+          {% for pid, spec in providers.items() %}{{ spec.label }}: {{ spec.hint }}<br>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label for="model_name">Model identifier</label>
+        <input id="model_name" name="model_name" type="text" required maxlength="160"
+               value="{{ form.model_name|default('') }}" placeholder="llama-3.3-70b-instruct">
+      </div>
+      <div>
+        <label for="fleet_model_id">Fleet model <span class="hint">Optional. Ties this target to an entry in packs/models.yaml.</span></label>
+        <select id="fleet_model_id" name="fleet_model_id">
+          <option value="">Not mapped</option>
+          {% for model in fleet %}
+            <option value="{{ model.id }}" {% if form.fleet_model_id == model.id %}selected{% endif %}>
+              {{ model.name }} ({{ model.deployment }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label for="endpoint">Endpoint URL
+        <span class="hint">Required for an on-prem target. Loopback, link-local and cloud
+        metadata addresses are refused.</span>
+      </label>
+      <input id="endpoint" name="endpoint" type="url" maxlength="400"
+             value="{{ form.endpoint|default('') }}" placeholder="https://llm.internal.example/v1">
+    </div>
+
+    <div>
+      <label for="api_key">API key
+        <span class="hint">Stored encrypted. Leave blank for an unauthenticated on-prem endpoint.</span>
+      </label>
+      <input id="api_key" name="api_key" type="password" autocomplete="new-password" maxlength="500">
+    </div>
+
+    <div><button type="submit">Add target</button></div>
+  </form>
+</div>
+
+<h2>Your targets</h2>
+{% if not targets %}
+  <div class="card"><p class="muted">Nothing configured yet.</p></div>
+{% else %}
+  {% for target in targets %}
+    <div class="card">
+      <div class="form-row">
+        <div>
+          <h3>{{ target.label }}</h3>
+          <p class="small mono">{{ target.model_name }}</p>
+          <ul class="pill-row">
+            <li>{{ providers[target.provider].label if target.provider in providers else target.provider }}</li>
+            {% if target.endpoint %}<li class="mono">{{ target.endpoint }}</li>{% endif %}
+            <li>Key: {{ target.api_key_hint or 'none stored' }}</li>
+            {% if target.fleet_model_id %}<li>Fleet: {{ target.fleet_model_id }}</li>{% endif %}
+          </ul>
+          {% if target.last_checked_at %}
+            <p class="small {% if target.last_check_ok %}muted{% endif %}">
+              Last check {{ target.last_checked_at|when }}:
+              {{ 'reachable' if target.last_check_ok else 'failed' }} — {{ target.last_check_message }}
+            </p>
+          {% else %}
+            <p class="small muted">Never checked.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <form method="post" action="/models/{{ target.id }}/check" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary small">Test connection</button>
+        </form>
+
+        <form method="post" action="/models/{{ target.id }}/key" class="form-row" autocomplete="off">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div>
+            <label for="key-{{ target.id }}">Replace key</label>
+            <input id="key-{{ target.id }}" name="api_key" type="password"
+                   autocomplete="new-password" maxlength="500" placeholder="New key, or blank to remove">
+          </div>
+          <div><button type="submit" class="secondary small">Update key</button></div>
+        </form>
+
+        <form method="post" action="/models/{{ target.id }}/delete" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="danger small">Delete target and runs</button>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,30 @@
+# TLS terminates here. Caddy obtains and renews a certificate for the host
+# automatically, so there is no manual certificate handling to get wrong.
+
+aish.devalier.com {
+	encode zstd gzip
+
+	# HSTS is set by the application in production; this is the transport half.
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		-Server
+	}
+
+	# The application reads the first X-Forwarded-For entry and ignores the rest,
+	# so this proxy must be the only thing writing that header.
+	reverse_proxy app:8000 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# Anything arriving on another name is refused rather than served.
+:80, :443 {
+	respond "Unrecognised host." 400
+}

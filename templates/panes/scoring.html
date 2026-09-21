@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% from "_macros.html" import verdict %}
+{% set active = 'scoring' %}
+{% block title %}Scoring methodology{% endblock %}
+{% block content %}
+
+<h1>Scoring methodology</h1>
+<p class="lede">
+  Every number this application reports is defined here, and every parameter behind it is on
+  this page. Nothing is hard-coded: thresholds, weights and lexicons all come from
+  <span class="mono">packs/</span> and are edited by the Working Group.
+</p>
+
+<div class="card">
+  <h2>Principles</h2>
+  <ol>
+    <li><strong>Four axes, not one number.</strong> Capability, safety, bias and grounding measure
+      different things. Any composite is a convenience figure, shown only with its weights.</li>
+    <li><strong>No score without its denominator.</strong> Every figure carries n, its interval and
+      the suite version that produced it.</li>
+    <li><strong>Parse failures are reported, not absorbed.</strong> An unparseable response is its
+      own category; counting it as wrong would charge a harness limitation to the model.</li>
+    <li><strong>Judges are part of the measurement.</strong> Where a judge scores a response, its
+      identity and version appear beside the score.</li>
+    <li><strong>Scoring is re-runnable.</strong> Responses are stored, so changing a threshold
+      re-scores existing evidence without re-querying any model.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>Criteria</h2>
+  <p class="muted small">
+    From <span class="mono">packs/criteria.yaml</span>. All values are placeholders pending
+    Working Group ratification.
+  </p>
+  {% for name, body in criteria.items() %}
+    <h3 class="mono">{{ name }}</h3>
+    <p class="small">{{ body.description }}</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Metric</th><th class="num">Pass</th><th class="num">Watch</th><th>Direction</th></tr></thead>
+        <tbody>
+        {% for metric, bands in body.get('metrics', {}).items() %}
+          <tr>
+            <td class="mono">{{ metric }}</td>
+            <td class="num">{{ bands.get('pass')|num(2) }}</td>
+            <td class="num">{{ bands.get('watch')|num(2) }}</td>
+            <td class="small">{{ 'lower is better' if bands.get('direction') == 'lower_is_better' else 'higher is better' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if body.get('rationale') %}<p class="small muted">{{ body.rationale }}</p>{% endif %}
+    {% if body.get('confidence') %}
+      <p class="small muted">
+        Intervals: {{ body.confidence.method }}, {{ body.confidence.resamples }} resamples at
+        {{ body.confidence.level }}. Interval crossing a threshold → {{ verdict('inconclusive') }}.
+      </p>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Composite index</h2>
+  {% if composite.get('enabled') %}
+    <p>Enabled. Weights:</p>
+  {% else %}
+    <p><strong>Disabled.</strong> Results are reported as a four-axis profile. If the Working
+      Group enables the composite, these are the weights it would use, and it is never shown
+      without the four component scores beside it:</p>
+  {% endif %}
+  <ul class="pill-row">
+    {% for family, weight in composite.get('weights', {}).items() %}
+      <li>{{ family }}: {{ weight }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Metric definitions</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Metric</th><th>Definition</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">accuracy</td><td>correct ÷ (total − unparseable), per language × subject</td></tr>
+        <tr><td class="mono">unparsed_rate</td><td>unparseable ÷ total</td></tr>
+        <tr><td class="mono">parity[L]</td><td>accuracy[L] ÷ accuracy[reference] on the identical item set</td></tr>
+        <tr><td class="mono">parity_floor</td><td>the minimum parity across the non-reference languages — the headline EU-MMLU metric</td></tr>
+        <tr><td class="mono">violation_rate</td><td>unsafe responses ÷ total, macro-averaged over hazard categories</td></tr>
+        <tr><td class="mono">over_refusal_rate</td><td>refusals on the benign control set — reported beside violation rate, never netted against it</td></tr>
+        <tr><td class="mono">rate_disparity</td><td>max(rate) − min(rate) across a matched counterfactual group</td></tr>
+        <tr><td class="mono">refusal_disparity</td><td>the same spread, over refusal rates</td></tr>
+        <tr><td class="mono">quality_disparity</td><td>normalised spread of response-quality measures across the group</td></tr>
+        <tr><td class="mono">hallucination_rate</td><td>hallucinated ÷ total</td></tr>
+        <tr><td class="mono">grounded_rate</td><td>grounded ÷ answerable items</td></tr>
+        <tr><td class="mono">abstention_precision</td><td>correct abstentions ÷ all abstentions</td></tr>
+        <tr><td class="mono">calibration</td><td>correct abstention on unanswerable − wrong abstention on answerable. This is what separates a well-behaved model from a merely timid one; hallucination rate alone rewards blanket refusal.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Answer extraction</h2>
+  <p>
+    Multiple-choice answers are extracted deterministically, in this order: explicit letter
+    (A–D); explicit index (0–3); exact restatement of one choice. Anything else is
+    <span class="mono">unparseable</span> — reported as its own category, never scored as wrong.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Lexicons</h2>
+  <p class="muted small">
+    From <span class="mono">packs/lexicons.yaml</span>. These are transparent heuristics, not
+    classifiers: they are published here so a reviewer can see exactly what a score counted.
+    Where a suite needs judgement rather than pattern matching it declares an LLM judge instead,
+    and the report says which was used.
+  </p>
+  {% for key in ['abstention', 'refusal', 'hedging'] %}
+    {% set section = lexicons.get(key, {}) %}
+    <h3>{{ key|capitalize }}</h3>
+    <p class="small muted">{{ section.get('description') }}</p>
+    <ul class="pill-row">
+      {% for phrase in (section.get('phrases') or section.get('terms') or []) %}
+        <li class="mono">{{ phrase }}</li>
+      {% endfor %}
+    </ul>
+  {% endfor %}
+  <h3>Stereotype markers</h3>
+  <p class="small muted">{{ lexicons.get('stereotype_markers', {}).get('description') }}</p>
+  {% for group, terms in lexicons.get('stereotype_markers', {}).get('groups', {}).items() %}
+    <p class="small"><strong>{{ group }}</strong></p>
+    <ul class="pill-row">{% for term in terms %}<li class="mono">{{ term }}</li>{% endfor %}</ul>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Judges</h2>
+  {% if judges %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Judge</th><th>Model</th><th class="num">Min κ</th><th>Note</th></tr></thead>
+        <tbody>
+        {% for judge in judges %}
+          <tr>
+            <td class="mono">{{ judge.id }}</td>
+            <td class="mono">{{ judge.model }}</td>
+            <td class="num">{{ judge.min_kappa }}</td>
+            <td class="small">{{ judge.note or '' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+  <p class="small">
+    Where a judge is used, its agreement with a human-labelled calibration set is measured each
+    time the judge model or judge prompt changes. Below the minimum κ, that judge may not be used
+    for a scored run. A cloud judge reading restricted on-prem content would breach data
+    residency, so restricted suites must use an on-prem judge.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Comparability</h2>
+  <p>
+    Two results are comparable only when suite major version, dataset revision, scorer version,
+    judge configuration and sampling parameters all match. Every run records all five in its
+    manifest. A sampled run is labelled <span class="tag">sample</span> throughout and is not
+    comparable to a full run.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Suites currently defined</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Suite</th><th>Family</th><th>Scorer</th><th>Criteria</th><th>Version</th></tr></thead>
+      <tbody>
+      {% for suite in suites %}
+        <tr>
+          <td><a href="/panes/suites/{{ suite.id }}" class="mono">{{ suite.id }}</a></td>
+          <td>{{ suite.family }}</td>
+          <td class="mono small">{{ suite.scorer }}</td>
+          <td class="mono small">{{ suite.criteria }}</td>
+          <td class="mono small">{{ suite.version }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

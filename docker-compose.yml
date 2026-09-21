@@ -1,0 +1,48 @@
+# Production composition for aish.devalier.com.
+# Secrets come from the environment or a Docker secret — never from this file.
+services:
+  app:
+    build: .
+    image: aish:latest
+    restart: unless-stopped
+    environment:
+      AISH_ENV: production
+      AISH_PUBLIC_HOST: aish.devalier.com
+      AISH_SECRET_KEY: ${AISH_SECRET_KEY:?set AISH_SECRET_KEY}
+      AISH_ENCRYPTION_KEY: ${AISH_ENCRYPTION_KEY:?set AISH_ENCRYPTION_KEY}
+      AISH_DATABASE_URL: sqlite:////data/aish.db
+      AISH_ALLOWED_EMAIL_DOMAINS: ${AISH_ALLOWED_EMAIL_DOMAINS:-}
+      AISH_REQUIRE_ADMIN_APPROVAL: ${AISH_REQUIRE_ADMIN_APPROVAL:-false}
+    volumes:
+      - aish-data:/data
+    read_only: true              # only the data volume and /tmp are writable
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    expose:
+      - "8000"
+    networks: [edge]
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [app]
+    networks: [edge]
+
+networks:
+  edge:
+
+volumes:
+  aish-data:
+  caddy-data:
+  caddy-config:

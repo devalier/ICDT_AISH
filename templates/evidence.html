@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% set active = 'runs' %}
+{% block title %}Evidence — run {{ run.id }}{% endblock %}
+{% block content %}
+
+<h1>Evidence</h1>
+<p class="lede">
+  Run {{ run.id }} · {{ run.suite_id }} v{{ run.suite_version }}.
+  Every prompt sent and every response received, exactly as stored.
+</p>
+
+<div class="card">
+  <form method="get" action="/runs/{{ run.id }}/evidence" class="form-row">
+    <div>
+      <label for="outcome">Outcome</label>
+      <select id="outcome" name="outcome">
+        <option value="">All</option>
+        {% for value in outcomes %}
+          <option value="{{ value }}" {% if value == outcome %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="stratum">Stratum</label>
+      <input id="stratum" name="stratum" type="text" maxlength="120" value="{{ stratum }}">
+    </div>
+    <div><button type="submit" class="secondary">Filter</button></div>
+    <div><a class="button secondary" href="/runs/{{ run.id }}">Back to run</a></div>
+  </form>
+  <p class="muted small">{{ total }} matching item{{ '' if total == 1 else 's' }}.</p>
+</div>
+
+{% for row in rows %}
+  <div class="card">
+    <div class="form-row">
+      <div>
+        <h3 class="mono">{{ row.item_id }}</h3>
+        <ul class="pill-row">
+          <li>{{ row.outcome or 'no outcome' }}</li>
+          {% if row.stratum %}<li>{{ row.stratum }}</li>{% endif %}
+          {% if row.variant %}<li>{{ row.variant }}</li>{% endif %}
+          <li>{{ row.latency_ms }} ms</li>
+          <li>{{ row.tokens_in }}→{{ row.tokens_out }} tokens</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Prompt</h3>
+    <pre class="evidence-text">{{ row.prompt }}</pre>
+    <h3>Response</h3>
+    <pre class="evidence-text">{{ row.response or '(empty)' }}</pre>
+    {% if row.error %}<p class="small"><strong>Error:</strong> {{ row.error }}</p>{% endif %}
+  </div>
+{% else %}
+  <div class="card"><p class="muted">Nothing matches that filter.</p></div>
+{% endfor %}
+
+{% if pages > 1 %}
+  <div class="card">
+    <p>
+      Page {{ page }} of {{ pages }} ·
+      {% if page > 1 %}
+        <a href="/runs/{{ run.id }}/evidence?page={{ page - 1 }}&outcome={{ outcome }}&stratum={{ stratum }}">Previous</a>
+      {% endif %}
+      {% if page < pages %}
+        <a href="/runs/{{ run.id }}/evidence?page={{ page + 1 }}&outcome={{ outcome }}&stratum={{ stratum }}">Next</a>
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+{% endblock %}

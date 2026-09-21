@@ -1,18 +1,49 @@
-name: validate packs
+name: ci
 
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  validate:
+  test:
+    name: packs, tests and security checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - run: pip install -r requirements.txt
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
       # Every change to the editable test-and-criteria module is checked (REQ-EDIT-03).
-      - run: python3 -m harness validate
-      - run: python3 -m unittest discover -s tests -v
+      - name: Validate test definitions
+        run: python -m harness validate
+
+      - name: Tests
+        run: python -m pytest tests/ -q
+
+      # Fails the build on any known vulnerability in a pinned dependency.
+      - name: Dependency audit
+        run: |
+          pip-audit -r requirements.txt --progress-spinner off
+          pip-audit -r requirements-dev.txt --progress-spinner off
+
+      - name: Static security analysis
+        run: bandit -r aish harness scripts -q
+
+      - name: Check no inline styles or scripts crept into the templates
+        run: |
+          if grep -rnE '<(script|style)[^>]*>[^<]' templates/ \
+             || grep -rn 'style="' templates/; then
+            echo "Inline style or script found; the CSP forbids it." >&2
+            exit 1
+          fi

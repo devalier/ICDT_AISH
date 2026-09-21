@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% from "_macros.html" import verdict, dotplot %}
+{% set active = 'bias' %}
+{% block title %}Bias basis{% endblock %}
+{% block content %}
+
+<h1>Basis for bias evaluation</h1>
+<p class="lede">
+  What grounds a bias finding here, stated before any number is shown. This page is generated
+  from the same files the tests run from, so what you read is what was measured.
+</p>
+
+<div class="card">
+  <h2>Why a EUIBA-specific suite</h2>
+  <p>
+    Public safety benchmarks are largely US-origin. They cover race, gender, religion and
+    sexuality, and they cover them in English. They do not cover the two axes that matter most
+    in an EU institutional setting:
+  </p>
+  <ul>
+    <li><strong>Nationality across Member States</strong> — differential treatment of a Polish,
+      Greek, Portuguese or Irish subject in the same scenario.</li>
+    <li><strong>Language of the user</strong> — whether the quality, caution or helpfulness of an
+      answer degrades when the same request is made in a smaller-service language.</li>
+  </ul>
+  <p>
+    EU-MMLU measures whether a model <em>knows</em> the answer in each language. This suite
+    measures whether it <em>treats the user</em> the same in each.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Legal and normative basis</h2>
+  <p class="muted small">
+    From <span class="mono">packs/attributes.yaml</span>. Each protected attribute carries the
+    instrument it rests on.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Attribute</th><th>Basis</th><th class="num">Variants</th><th>EU-specific</th></tr></thead>
+      <tbody>
+      {% for attribute in attributes %}
+        <tr>
+          <td><strong>{{ attribute.label }}</strong><div class="cell-meta mono">{{ attribute.id }}</div></td>
+          <td class="small">{{ attribute.basis|join('; ') }}</td>
+          <td class="num">{{ attribute.variants|length }}</td>
+          <td>{% if attribute.eu_specific %}<span class="tag">yes</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted small">
+    The EU AI Act (Arts. 10 and 15) is what obliges a high-risk system to be tested for bias and
+    to have that testing documented; the attributes above are what the testing is against.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Method: matched counterfactual groups</h2>
+  <p>
+    Every test is a template plus a substitution set. The harness expands one template into a
+    matched group — items identical in every respect except the attribute under test — and
+    measures <strong>the spread across the group</strong>, never the absolute value of any one
+    variant.
+  </p>
+  <p>
+    This distinction is the whole method. A model that recommends every candidate 90% of the
+    time is not biased. A model that recommends 91% for one nationality and 62% for another is,
+    regardless of the average.
+  </p>
+  <h3>Design rules</h3>
+  <ul>
+    <li>One axis per group; interaction effects need an explicit intersectional group.</li>
+    <li>Names are held constant across variants, so name-proxy effects stay separable.</li>
+    <li>All variants must be equally plausible in the scenario — otherwise the test measures
+      world knowledge, not bias.</li>
+    <li>Variant order is randomised under a recorded seed.</li>
+  </ul>
+  <h3>What is measured</h3>
+  <ul>
+    <li><strong>Allocative</strong> — the model decides or advises. Metric: favourable-rate disparity.</li>
+    <li><strong>Representational</strong> — the model describes or associates. Metrics: stereotype-term
+      rate, hedging, and refusal disparity. Refusing to discuss one group while discussing
+      another is a finding in its own right.</li>
+    <li><strong>Quality of service</strong> — same request, different language or implied group.
+      Metrics: information content, length, hedging.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Thresholds</h2>
+  <p class="muted small">
+    From <span class="mono">packs/criteria.yaml</span> → <span class="mono">{{ suite.criteria }}</span>.
+    These are placeholders pending Working Group ratification.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Metric</th><th class="num">Pass below</th><th class="num">Watch below</th><th>Above watch</th></tr></thead>
+      <tbody>
+      {% for name, bands in criteria.get('metrics', {}).items() %}
+        <tr>
+          <td class="mono">{{ name }}</td>
+          <td class="num">{{ bands.get('pass')|num(2) }}</td>
+          <td class="num">{{ bands.get('watch')|num(2) }}</td>
+          <td>{{ verdict('fail') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if criteria.get('confidence') %}
+    <p class="small">
+      Intervals: {{ criteria.confidence.method }},
+      {{ criteria.confidence.resamples }} resamples at {{ criteria.confidence.level }}.
+      A point estimate past a threshold whose interval still crosses it is reported
+      <strong>inconclusive</strong>, not as a verdict. Small groups land there often; saying so
+      is the honest result.
+    </p>
+  {% endif %}
+  {% if criteria.get('rationale') %}<p class="small muted">{{ criteria.rationale }}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Known limits of this method</h2>
+  <ul>
+    <li>Counterfactual templates test what they encode. A clean pass means "no disparity on the
+      tested axes in the tested scenarios", never "unbiased".</li>
+    <li>Published templates can be trained against; the suite therefore keeps a held-out set that
+      is versioned but not published.</li>
+    <li>Parity in a single-turn prompt does not imply parity in a multi-turn or tool-using
+      deployment.</li>
+    <li>Translated templates carry translation artefacts. A language-axis finding must be
+      reviewed by a native speaker before it is attributed to the model rather than to prompt
+      asymmetry.</li>
+  </ul>
+</div>
+
+<h2>Findings</h2>
+{% if not findings %}
+  <div class="card">
+    <p class="muted">No bias runs yet.</p>
+    <a class="button" href="/runs">Run the euiba_bias suite</a>
+  </div>
+{% else %}
+  {% for finding in findings %}
+    <div class="card">
+      <h3>{{ finding.label }} {{ verdict(finding.verdict) }}</h3>
+      <p class="muted small">
+        <a href="/runs/{{ finding.run.id }}">Run {{ finding.run.id }}</a> ·
+        {{ finding.resamples }} bootstrap resamples
+        {%- if finding.capped_from %}, capped from {{ finding.capped_from }} for interactive display{% endif %}.
+      </p>
+      {% for group in finding.groups %}
+        {{ dotplot(group.probe_id, group.disparity, group.ci[0], group.ci[1],
+                   criteria.get('metrics', {}).get(group.metric, {}).get('pass'),
+                   criteria.get('metrics', {}).get(group.metric, {}).get('watch'),
+                   1.0, finding.verdicts.get(group.metric, "no_data")) }}
+      {% endfor %}
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}
