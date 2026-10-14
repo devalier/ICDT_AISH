@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from ..models import ModelTarget, utcnow
 from ..packs import current
 from ..providers import PROVIDERS, ProviderError, get_adapter
 from ..providers.base import GenerationParams
+from ..providers.catalog import list_models
 from ..security import decrypt_secret, encrypt_secret, redact, secret_hint, validate_endpoint
 from .deps import AuthContext, audit, require_user, templates, verify_csrf
 
@@ -69,6 +70,23 @@ def list_targets(
     context: AuthContext = Depends(require_user),
 ):
     return _render(request, db, context)
+
+
+@router.post("/models/available", dependencies=[Depends(verify_csrf)])
+async def available_models(
+    provider: str = Form(...),
+    endpoint: str = Form(""),
+    api_key: str = Form(""),
+    context: AuthContext = Depends(require_user),
+):
+    """Models the entered key can use. The key is used for this one call, never stored."""
+    if provider not in PROVIDERS:
+        return JSONResponse({"error": "Choose a provider from the list."}, status_code=400)
+    try:
+        models = await list_models(provider, api_key.strip() or None, endpoint.strip()[:400] or None)
+    except ProviderError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    return {"models": models}
 
 
 @router.post("/models", dependencies=[Depends(verify_csrf)])
