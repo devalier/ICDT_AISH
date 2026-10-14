@@ -127,6 +127,26 @@ class OpenAIAdapter:
         )
 
 
+class DeepSeekAdapter:
+    provider_id = "deepseek"
+    requires_endpoint = False
+    requires_key = True
+
+    async def generate(self, *, model, prompt, system, api_key, endpoint, params, timeout) -> Completion:
+        if not api_key:
+            raise ProviderError("a DeepSeek API key is required for this target")
+        return await _post_chat(
+            base_url=endpoint or "https://api.deepseek.com",
+            api_key=api_key,
+            model=model,
+            prompt=prompt,
+            system=system,
+            params=params,
+            timeout=timeout,
+            verify_endpoint=bool(endpoint),
+        )
+
+
 class OpenAICompatibleAdapter:
     provider_id = "openai_compatible"
     requires_endpoint = True
