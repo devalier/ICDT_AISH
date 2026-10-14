@@ -68,6 +68,12 @@ PROVIDERS: dict[str, dict] = {
         "requires_key": True,
         "hint": "Cloud. Model id such as gpt-5.1.",
     },
+    "deepseek": {
+        "label": "DeepSeek",
+        "requires_endpoint": False,
+        "requires_key": True,
+        "hint": "Cloud. Model id such as deepseek-chat or deepseek-reasoner.",
+    },
     "openai_compatible": {
         "label": "On-prem / OpenAI-compatible endpoint",
         "requires_endpoint": True,
@@ -79,11 +85,12 @@ PROVIDERS: dict[str, dict] = {
 
 def get_adapter(provider_id: str) -> Adapter:
     from .anthropic_adapter import AnthropicAdapter
-    from .openai_adapter import OpenAIAdapter, OpenAICompatibleAdapter
+    from .openai_adapter import DeepSeekAdapter, OpenAIAdapter, OpenAICompatibleAdapter
 
     adapters: dict[str, Adapter] = {
         "anthropic": AnthropicAdapter(),
         "openai": OpenAIAdapter(),
+        "deepseek": DeepSeekAdapter(),
         "openai_compatible": OpenAICompatibleAdapter(),
     }
     if provider_id not in adapters:
