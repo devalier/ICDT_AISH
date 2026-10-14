@@ -38,7 +38,7 @@ async def _post_chat(
     params: GenerationParams,
     timeout: float,
     verify_endpoint: bool,
-    token_field: str = "max_tokens",
+    limit_param: str = "max_tokens",
 ) -> Completion:
     if verify_endpoint:
         check = validate_endpoint(base_url)
@@ -57,7 +57,7 @@ async def _post_chat(
         "messages": messages,
         "temperature": params.temperature,
         "top_p": params.top_p,
-        token_field: params.max_tokens,
+        limit_param: params.max_tokens,
         "stream": False,
     }
     if params.seed is not None:
@@ -148,7 +148,7 @@ class OpenAIAdapter:
             params=params,
             timeout=timeout,
             verify_endpoint=bool(endpoint),
-            token_field="max_completion_tokens",
+            limit_param="max_completion_tokens",
         )
 
 
