@@ -18,6 +18,16 @@ from .base import Completion, GenerationParams, ProviderError
 _CHAT_PATH = "/chat/completions"
 
 
+def _error_detail(response: httpx.Response) -> str:
+    """The provider's own error message, so a 400/403 says what was actually wrong."""
+    try:
+        err = response.json().get("error")
+        text = err.get("message") if isinstance(err, dict) else err
+    except (ValueError, AttributeError):
+        text = None
+    return str(text or "")[:300]
+
+
 async def _post_chat(
     *,
     base_url: str,
@@ -28,6 +38,7 @@ async def _post_chat(
     params: GenerationParams,
     timeout: float,
     verify_endpoint: bool,
+    token_field: str = "max_tokens",
 ) -> Completion:
     if verify_endpoint:
         check = validate_endpoint(base_url)
@@ -46,7 +57,7 @@ async def _post_chat(
         "messages": messages,
         "temperature": params.temperature,
         "top_p": params.top_p,
-        "max_tokens": params.max_tokens,
+        token_field: params.max_tokens,
         "stream": False,
     }
     if params.seed is not None:
@@ -62,6 +73,15 @@ async def _post_chat(
         # into an unvalidated one.
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             response = await client.post(url, json=payload, headers=headers)
+            # Reasoning models reject fixed sampling parameters. Retry once without
+            # whichever ones the endpoint names; the run records that it was not pinned.
+            if response.status_code == 400:
+                detail = _error_detail(response).lower()
+                dropped = [k for k in ("temperature", "top_p", "seed") if k in detail and k in payload]
+                if dropped:
+                    for key in dropped:
+                        payload.pop(key)
+                    response = await client.post(url, json=payload, headers=headers)
     except httpx.TimeoutException as exc:
         raise ProviderError("model endpoint timed out", retryable=True) from exc
     except httpx.RequestError as exc:
@@ -72,7 +92,10 @@ async def _post_chat(
     if response.status_code == 401:
         raise ProviderError("authentication rejected by the model endpoint", status=401)
     if response.status_code == 403:
-        raise ProviderError("API key lacks permission for this model", status=403)
+        raise ProviderError(
+            f"forbidden by the provider: {_error_detail(response) or 'API key lacks permission for this model'}",
+            status=403,
+        )
     if response.status_code == 404:
         raise ProviderError(f"model {model!r} or endpoint path not found", status=404)
     if response.status_code == 429:
@@ -84,7 +107,8 @@ async def _post_chat(
         )
     if response.status_code >= 400:
         raise ProviderError(
-            f"model endpoint rejected the request ({response.status_code})",
+            f"model endpoint rejected the request ({response.status_code}): "
+            f"{_error_detail(response) or 'no detail'}",
             status=response.status_code,
         )
 
@@ -124,6 +148,7 @@ class OpenAIAdapter:
             params=params,
             timeout=timeout,
             verify_endpoint=bool(endpoint),
+            token_field="max_completion_tokens",
         )
 
 
