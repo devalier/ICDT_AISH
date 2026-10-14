@@ -32,3 +32,35 @@
   }
   window.setTimeout(tick, 1500);
 })();
+
+/* Model discovery on the "My models" form. */
+(function () {
+  "use strict";
+  var button = document.querySelector("[data-load-models]");
+  if (!button) return;
+
+  var form = button.closest("form");
+  var status = document.querySelector("[data-load-status]");
+  var list = document.getElementById("model_options");
+
+  button.addEventListener("click", function () {
+    var data = new FormData();
+    ["csrf_token", "provider", "endpoint", "api_key"].forEach(function (name) {
+      data.append(name, form.elements[name].value);
+    });
+    status.textContent = "Loading…";
+    fetch("/models/available", { method: "POST", body: data, credentials: "same-origin" })
+      .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (res) {
+        if (!res.ok) { status.textContent = res.body.error || "Could not load models."; return; }
+        list.textContent = "";
+        res.body.models.forEach(function (id) {
+          var option = document.createElement("option");
+          option.value = id;
+          list.appendChild(option);
+        });
+        status.textContent = res.body.models.length + " models available — click the field to pick one.";
+      })
+      .catch(function () { status.textContent = "Could not load models."; });
+  });
+})();

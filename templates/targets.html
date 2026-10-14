@@ -36,9 +36,15 @@
 
     <div class="form-row">
       <div>
-        <label for="model_name">Model identifier</label>
+        <label for="model_name">Model identifier
+          <span class="hint">Enter the API key, then load the list. You can still type any id.</span>
+        </label>
         <input id="model_name" name="model_name" type="text" required maxlength="160"
-               value="{{ form.model_name|default('') }}" placeholder="llama-3.3-70b-instruct">
+               list="model_options" value="{{ form.model_name|default('') }}"
+               placeholder="llama-3.3-70b-instruct">
+        <datalist id="model_options"></datalist>
+        <button type="button" class="secondary" data-load-models>Load models from provider</button>
+        <div class="hint" data-load-status role="status"></div>
       </div>
       <div>
         <label for="fleet_model_id">Fleet model <span class="hint">Optional. Ties this target to an entry in packs/models.yaml.</span></label>
@@ -125,3 +131,4 @@
   {% endfor %}
 {% endif %}
 {% endblock %}
+{% block scripts %}<script src="/static/app.js"></script>{% endblock %}
