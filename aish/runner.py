@@ -53,6 +53,20 @@ class Item:
 # --------------------------------------------------------------------------- #
 
 
+def dataset_revision(suite: dict) -> str | None:
+    """The revision a run's manifest should record (REQ-EUM-07): the pin in the suite file,
+    or if that is still ``PIN_ME``, what the fetch script recorded for the data on disk."""
+    declared = (suite.get("dataset") or {}).get("revision")
+    if declared and declared != "PIN_ME":
+        return declared
+    name = "eu_mmlu" if suite.get("family") == "capability" else "ailuminate"
+    try:
+        data = json.loads(Path(f"data/{name}.revision.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return declared
+    return data.get("hub_commit") or data.get("upstream_commit") or f"sha256:{data.get('sha256')}"
+
+
 def _eu_mmlu_rows() -> list[dict]:
     path = EU_MMLU_DATA
     if not path.exists():
@@ -71,6 +85,26 @@ def _eu_mmlu_rows() -> list[dict]:
     return rows
 
 
+def _answer_index(value, row_id: str) -> int:
+    """Normalise the published ``Answer`` to 0-3. The dataset card does not make the
+    encoding obvious (index, digit string or letter), and a mismatch would silently
+    score every item wrong — so anything unrecognised fails the run loudly."""
+    if isinstance(value, bool):
+        pass
+    elif isinstance(value, int) and 0 <= value <= 3:
+        return value
+    elif isinstance(value, str):
+        text = value.strip().upper().rstrip(".)")
+        if text in ("0", "1", "2", "3"):
+            return int(text)
+        if text in ("A", "B", "C", "D"):
+            return "ABCD".index(text)
+    raise RunError(
+        f"EU-MMLU row {row_id} has Answer={value!r}, which is not an index 0-3 or a "
+        "letter A-D. The upstream encoding may have changed; refusing to guess."
+    )
+
+
 def _build_eu_mmlu(suite: dict, sample: bool, seed: int) -> list[Item]:
     rows = _eu_mmlu_rows()
     languages = {lang.lower() for lang in suite.get("languages") or []}
@@ -87,16 +121,34 @@ def _build_eu_mmlu(suite: dict, sample: bool, seed: int) -> list[Item]:
     per_stratum = (suite.get("sampling_mode") or {}).get("items_per_stratum", 25)
     # Seeded, reproducible item selection — deliberately not a cryptographic RNG.
     rng = random.Random(seed)  # nosec B311
+
+    # Parity is accuracy relative to English "on the identical item set" (REQ-EUM-05), so
+    # a sample must pick the SAME questions in every language. Choose the Index set once
+    # per subject, from the indices every selected language has, and apply it everywhere.
+    shared: dict[str, set] = {}
+    if sample:
+        indices: dict[str, list[set]] = defaultdict(list)
+        for (language, subject), stratum_rows in by_stratum.items():
+            indices[subject].append({r.get("Index") for r in stratum_rows})
+        for subject, sets in indices.items():
+            common = set.intersection(*sets) if sets else set()
+            ordered = sorted(common, key=lambda v: (str(type(v)), v))
+            shared[subject] = set(rng.sample(ordered, min(per_stratum, len(ordered)))) if ordered else set()
+
     items: list[Item] = []
     template = (suite.get("prompt") or {}).get("template", "")
 
     for (language, subject), stratum_rows in sorted(by_stratum.items()):
-        chosen = stratum_rows
+        chosen = sorted(stratum_rows, key=lambda r: r.get("Index", 0))
         if sample:
-            chosen = sorted(stratum_rows, key=lambda r: r.get("Index", 0))
-            if len(chosen) > per_stratum:
+            if shared.get(subject):
+                chosen = [r for r in chosen if r.get("Index") in shared[subject]]
+            elif len(chosen) > per_stratum:
+                # Indices do not line up across languages for this subject; fall back to
+                # independent sampling and let the summary report parity as unpaired.
                 chosen = rng.sample(chosen, per_stratum)
         for row in chosen:
+            item_key = f"{language}/{subject}/{row.get('Index')}"
             choices = [str(row.get(f"Choice_{i}", "")) for i in range(4)]
             prompt = template.format(
                 question=row.get("Question", ""),
@@ -105,12 +157,12 @@ def _build_eu_mmlu(suite: dict, sample: bool, seed: int) -> list[Item]:
             )
             items.append(
                 Item(
-                    item_id=f"{language}/{subject}/{row.get('Index')}",
+                    item_id=item_key,
                     prompt=prompt,
                     stratum=f"{language}|{subject}",
                     variant=language,
-                    meta={"choices": choices, "answer": row.get("Answer"), "language": language,
-                          "subject": subject},
+                    meta={"choices": choices, "answer": _answer_index(row.get("Answer"), item_key),
+                          "language": language, "subject": subject},
                 )
             )
     return items
@@ -171,6 +223,7 @@ def _build_grounding(suite: dict) -> list[Item]:
     for probe in suite.get("items") or []:
         prompt = probe.get("prompt", "")
         source_ref = probe.get("source")
+        source_text = ""
         if source_ref:
             source_path = packs_dir() / source_ref
             if not source_path.exists():
@@ -181,12 +234,16 @@ def _build_grounding(suite: dict) -> list[Item]:
             Item(
                 item_id=probe["id"],
                 prompt=prompt,
-                stratum=probe.get("domain", ""),
+                # "+cite" marks citation-checked items so citation_rate can find them.
+                stratum=probe.get("domain", "") + ("+cite" if probe.get("check_citation") else ""),
                 variant=probe.get("item_type", ""),
                 meta={
                     "expected": probe.get("expected"),
                     "reference_answer": probe.get("reference_answer"),
+                    "reference_answers": probe.get("reference_answers"),
                     "item_type": probe.get("item_type"),
+                    "check_citation": bool(probe.get("check_citation")),
+                    "source_text": source_text,
                 },
             )
         )
@@ -305,6 +362,10 @@ def score_item(family: str, item: Item, text: str, refused: bool) -> tuple[str, 
     if family == "grounding":
         outcome = scoring.classify_grounding(text, item.meta)
         positive = outcome in (scoring.GROUNDED, scoring.ABSTAINED_CORRECTLY)
+        if outcome == scoring.GROUNDED and item.meta.get("check_citation"):
+            # Score 1.0 = grounded and cited a paragraph that exists; 0.5 = grounded but
+            # uncited. The outcome class stays fixed (REQ-GND-03); citation_rate reads this.
+            return outcome, (1.0 if scoring.is_cited(text, item.meta) else 0.5)
         return outcome, (1.0 if positive else 0.0)
 
     if family == "bias":
@@ -427,12 +488,33 @@ def _summarise_capability(rows: list[Result], suite: dict) -> dict:
                 1 for r in judged if r.outcome == "correct"
             ) / len(judged)
 
-    baseline = language_accuracy.get(reference)
-    parity = (
-        {lang: (acc / baseline) for lang, acc in language_accuracy.items() if lang != reference}
-        if baseline
-        else {}
-    )
+    # Parity on the identical item set (REQ-EUM-05): compare each language only on the
+    # questions that were also scored in the reference language. If the Index column does
+    # not line up across languages (little overlap), fall back to the unpaired ratio and
+    # say so, rather than reporting a paired number that is really nothing of the kind.
+    def _key(row: Result) -> str:
+        return row.item_id.split("/", 1)[1] if "/" in row.item_id else row.item_id
+
+    def _scored(rs: list[Result]) -> dict[str, float]:
+        return {_key(r): 1.0 if r.outcome == "correct" else 0.0
+                for r in rs if r.outcome in ("correct", "incorrect")}
+
+    ref_scores = _scored(by_language.get(reference, []))
+    parity: dict[str, float] = {}
+    parity_basis: dict[str, str] = {}
+    for language, language_rows in by_language.items():
+        if language == reference:
+            continue
+        own = _scored(language_rows)
+        common = sorted(set(own) & set(ref_scores))
+        if own and len(common) >= 0.5 * len(own):
+            ref_acc = sum(ref_scores[k] for k in common) / len(common)
+            if ref_acc:
+                parity[language] = (sum(own[k] for k in common) / len(common)) / ref_acc
+                parity_basis[language] = "paired"
+        elif language in language_accuracy and language_accuracy.get(reference):
+            parity[language] = language_accuracy[language] / language_accuracy[reference]
+            parity_basis[language] = "unpaired"
 
     strata = []
     for language in sorted(by_language):
@@ -467,6 +549,7 @@ def _summarise_capability(rows: list[Result], suite: dict) -> dict:
         "reference_language": reference,
         "language_accuracy": language_accuracy,
         "parity": parity,
+        "parity_basis": parity_basis,
     }
 
 
@@ -500,8 +583,14 @@ def _summarise_grounding(rows: list[Result]) -> dict:
         if answerable else 0.0
     )
 
+    cited_pool = [r for r in rows if r.outcome == scoring.GROUNDED and r.score in (0.5, 1.0)
+                  and r.stratum.endswith("+cite")]
     return {
         "metrics": {
+            "citation_rate": (
+                sum(1 for r in cited_pool if r.score == 1.0) / len(cited_pool)
+                if cited_pool else None
+            ),
             "hallucination_rate": counts[scoring.HALLUCINATED] / total,
             "grounded_rate": grounded_rate,
             "abstention_precision": abstention_precision,

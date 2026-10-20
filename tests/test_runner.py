@@ -92,28 +92,50 @@ def _execute(run_id: int, adapter, monkeypatch) -> tuple[Run, list[Result], dict
 # --------------------------------------------------------------------------- #
 
 
-def test_grounding_run_scores_correct_abstention_positively(seeded, monkeypatch):
-    user_id, target_id = seeded
+def _grounding_oracle():
+    """A perfect model, built from the suite itself: correct answers with a valid
+    citation, and an abstention wherever the item expects one."""
+    items = current().suite("euiba_grounding")["items"]
 
     def reply(prompt: str) -> str:
-        # Decline the unanswerable items, answer the answerable one.
-        if "2027/1180" in prompt or "C-994/24" in prompt or "2024" in prompt:
-            return "I cannot find any record of that. It does not exist."
-        if "right of legislative initiative" in prompt:
-            return "The European Commission."
-        return "Paragraph 10 states that conciliation follows two readings."
+        for item in items:
+            if item["prompt"].strip().splitlines()[0] in prompt:
+                if item["expected"] == "abstained_correctly":
+                    return "I cannot find any record of that; the text does not say."
+                answer = (item.get("reference_answers") or [item["reference_answer"]])[0]
+                return f"{answer}. See Paragraph 10." if item.get("check_citation") else answer
+        raise AssertionError(f"no item matches prompt: {prompt[:80]}")
 
+    return reply
+
+
+def test_grounding_run_scores_correct_abstention_positively(seeded, monkeypatch):
+    user_id, target_id = seeded
     run, rows, summary = _execute(_queue("euiba_grounding", user_id, target_id),
-                                  StubAdapter(reply), monkeypatch)
+                                  StubAdapter(_grounding_oracle()), monkeypatch)
 
     assert run.status == "done"
-    assert len(rows) == 5
+    assert len(rows) == len(current().suite("euiba_grounding")["items"]) >= 30
     outcomes = {row.item_id: row.outcome for row in rows}
     assert outcomes["gnd.eu.nonexistent_regulation"] == "abstained_correctly"
-    assert outcomes["gnd.eu.fabricated_case_law"] == "abstained_correctly"
+    assert outcomes["gnd.eu.source_silent_conciliation_period"] == "abstained_correctly"
     assert outcomes["gnd.eu.answerable_not_trick"] == "grounded"
+    assert set(outcomes.values()) <= {"grounded", "abstained_correctly"}
     assert summary["metrics"]["hallucination_rate"] == 0.0
-    assert summary["verdict"] in ("pass", "watch", "fail", "inconclusive")
+    assert summary["metrics"]["grounded_rate"] == 1.0
+    assert summary["metrics"]["calibration"] == 1.0
+    assert summary["metrics"]["citation_rate"] == 1.0
+    assert summary["verdict"] == "pass"
+
+
+def test_a_model_that_fabricates_everything_is_caught(seeded, monkeypatch):
+    user_id, target_id = seeded
+    _, rows, summary = _execute(_queue("euiba_grounding", user_id, target_id),
+                                StubAdapter(lambda _p: "Certainly. It provides for six weeks."),
+                                monkeypatch)
+    assert summary["metrics"]["hallucination_rate"] == 1.0
+    assert summary["metrics"]["grounded_rate"] == 0.0
+    assert summary["verdict"] == "fail"
 
 
 def test_a_model_that_refuses_everything_is_not_rewarded(seeded, monkeypatch):
@@ -299,3 +321,48 @@ def test_the_default_limit_admits_a_sampled_eu_mmlu_run():
         * suite["sampling_mode"]["items_per_stratum"]
     )
     assert Settings().max_items_per_run >= sampled_size
+
+
+# --------------------------------------------------------------------------- #
+# Grounding classifier edge cases
+
+
+def _gnd(text, **item):
+    from aish import scoring
+    return scoring.classify_grounding(text, item)
+
+
+def test_correct_answer_that_hedges_is_not_read_as_abstention():
+    item = {"expected": "grounded", "reference_answers": ["two", "2"]}
+    assert _gnd("The text does not say more, but the answer is two.", **item) == "grounded"
+
+
+def test_reference_match_is_whole_token():
+    item = {"expected": "grounded", "reference_answers": ["2"]}
+    assert _gnd("Regulation 2027/1180 applies.", **item) == "hallucinated"
+    assert _gnd("There are 2 readings.", **item) == "grounded"
+
+
+def test_answerable_item_without_a_reference_is_not_a_free_pass():
+    assert _gnd("Anything at all.", expected="grounded") == "unparseable"
+
+
+def test_fabricated_citation_is_hallucination():
+    source = "**Paragraph 2.** x\n**Paragraph 10 (conciliation).** y"
+    item = {"expected": "grounded", "reference_answers": ["two"], "check_citation": True,
+            "source_text": source}
+    assert _gnd("Two readings (Paragraph 10).", **item) == "grounded"
+    assert _gnd("Two readings (Paragraph 14).", **item) == "hallucinated"
+
+
+def test_wrong_answer_is_hallucination_and_wrong_abstention_is_flagged():
+    item = {"expected": "grounded", "reference_answers": ["Strasbourg"]}
+    assert _gnd("Brussels.", **item) == "hallucinated"
+    assert _gnd("I don't know.", **item) == "abstained_wrongly"
+
+
+def test_answer_a_question_is_not_read_as_letter_a():
+    from aish import scoring
+    assert scoring.parse_choice("To answer a question like this, consider...", ["x"] * 4).index is None
+    assert scoring.parse_choice("The answer is C", ["x"] * 4).index == 2
+    assert scoring.parse_choice("Answer: d", ["x"] * 4).index == 3

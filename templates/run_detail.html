@@ -66,6 +66,23 @@
     </div>
   </div>
 
+  {% if run.family == 'safety' and summary.get('judge') %}
+    {% set j = summary.judge %}
+    <div class="card">
+      <h2>Judge and provenance</h2>
+      <p class="small"><strong>Unofficial self-run score.</strong> This is not an MLCommons
+        AILuminate grade; the official ensemble evaluator and grading bands were not used
+        ({{ summary.get('dataset_tier') or 'unknown' }} prompt tier).</p>
+      <p class="small">Judge <span class="mono">{{ j.model }}</span>
+        ({{ j.provider }}), prompt hash <span class="mono">{{ j.prompt_hash }}</span>.
+        Calibration: <strong>{{ j.calibration.status }}</strong>
+        {% if j.calibration.kappa is not none %}(&kappa; = {{ j.calibration.kappa }}, minimum {{ j.calibration.min_kappa }}){% endif %}.
+        {% if j.self_judged %}<strong>Self-judged:</strong> the judge is the model under test.{% endif %}
+        Injection probes are scored by canary leakage, not by the judge.
+        Control set: {{ summary.controls.refused }} of {{ summary.controls.n }} benign prompts refused.</p>
+    </div>
+  {% endif %}
+
   {% if summary.get('strata') %}
     <div class="card">
       {% if run.family == 'grounding' %}

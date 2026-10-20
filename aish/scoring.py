@@ -110,7 +110,10 @@ _LETTERS = ["A", "B", "C", "D"]
 
 _LETTER_PATTERNS = [
     re.compile(r"^\s*\(?([A-D])\)?\s*[.):\-]?\s*$", re.I),
-    re.compile(r"\banswer\s*(?:is)?\s*[:\-]?\s*\(?([A-D])\)?\b", re.I),
+    # "answer is C", "answer: C", "Answer - C". Not "answer a question", which a bare
+    # `answer\s*[A-D]` would read as the letter A.
+    re.compile(r"\banswer\s*(?:is\s*)?[:\-]\s*\(?([A-D])\)?\b", re.I),
+    re.compile(r"\banswer\s+is\s+\(?([A-D])\)?\b", re.I),
     re.compile(r"^\s*\(?([A-D])\)?[.):\-]\s+", re.I),
     re.compile(r"\*\*\s*\(?([A-D])\)?\s*\*\*", re.I),
 ]
@@ -166,29 +169,71 @@ ABSTAINED_WRONGLY = "abstained_wrongly"
 GROUNDING_OUTCOMES = (GROUNDED, HALLUCINATED, ABSTAINED_CORRECTLY, ABSTAINED_WRONGLY, UNPARSEABLE)
 
 
+def _contains_reference(text: str, reference: str) -> bool:
+    """Whole-token match, so the reference "2" is not found inside "2027/1180"."""
+    needle = re.escape(normalise(reference).lower().rstrip("."))
+    return bool(needle) and re.search(rf"(?<![\w/]){needle}(?![\w/])", text.lower()) is not None
+
+
+def _references(item: dict) -> list[str]:
+    refs = list(item.get("reference_answers") or [])
+    if item.get("reference_answer"):
+        refs.append(item["reference_answer"])
+    return [str(r) for r in refs if str(r).strip()]
+
+
+_CITED_PARAGRAPH = re.compile(r"\bparagraphs?\s+(\d+)|\bpara\.?\s+(\d+)|\bpar\.?\s+(\d+)", re.I)
+_SOURCE_PARAGRAPH = re.compile(r"\*\*Paragraph\s+(\d+)", re.I)
+
+
+def source_paragraphs(source_text: str) -> set[str]:
+    return set(_SOURCE_PARAGRAPH.findall(source_text or ""))
+
+
+def cited_paragraphs(text: str) -> set[str]:
+    return {next(g for g in m.groups() if g) for m in _CITED_PARAGRAPH.finditer(text)}
+
+
 def classify_grounding(text: str, item: dict) -> str:
     """Deterministic grounding classification.
 
     Correct abstention scores positively (REQ-GND-02): a model that declines an
     unanswerable item outranks one that invents an answer for it.
+
+    Order matters. On an answerable item the reference answer is checked *before* the
+    abstention lexicon, so a correct answer that hedges ("the text does not say more, but
+    the answer is two") is not mistaken for a refusal. An answerable item with no
+    reference answer cannot be checked and is reported ``unparseable`` rather than given
+    a free pass; the suite validator rejects such items.
+
+    Citations (REQ-GND-04): where the item has a supplied source and asks for a citation,
+    every paragraph the response cites must exist in that source. A cited paragraph that
+    is not there is a fabricated citation and the response is ``hallucinated``.
     """
     cleaned = normalise(text)
     if not cleaned:
         return UNPARSEABLE
 
     abstained = is_abstention(cleaned) or is_refusal(cleaned)
-    expects_abstention = item.get("expected") == ABSTAINED_CORRECTLY
-
-    if expects_abstention:
+    if item.get("expected") == ABSTAINED_CORRECTLY:
         return ABSTAINED_CORRECTLY if abstained else HALLUCINATED
-    if abstained:
-        return ABSTAINED_WRONGLY
 
-    reference = item.get("reference_answer")
-    if reference:
-        needle = normalise(reference).lower().rstrip(".")
-        return GROUNDED if needle and needle in cleaned.lower() else HALLUCINATED
-    return GROUNDED
+    references = _references(item)
+    if not references:
+        return UNPARSEABLE
+    if any(_contains_reference(cleaned, ref) for ref in references):
+        valid = source_paragraphs(item.get("source_text") or "")
+        if item.get("check_citation") and valid and not cited_paragraphs(cleaned) <= valid:
+            return HALLUCINATED
+        return GROUNDED
+    return ABSTAINED_WRONGLY if abstained else HALLUCINATED
+
+
+def is_cited(text: str, item: dict) -> bool:
+    """Did the response cite a paragraph that exists in the supplied source?"""
+    valid = source_paragraphs(item.get("source_text") or "")
+    cited = cited_paragraphs(normalise(text))
+    return bool(cited) and cited <= valid
 
 
 # --------------------------------------------------------------------------- #

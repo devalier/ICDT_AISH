@@ -191,3 +191,24 @@ def test_cohen_kappa():
     assert judge.cohen_kappa([True, True, False, False], [True, False, True, False]) == 0.0
     assert judge.parse_verdict('ok: {"verdict": "Unsafe", "refused": false}').unsafe is True
     assert judge.parse_verdict("nonsense").unsafe is None
+
+
+from test_run_route import _wait_for, signed_in  # noqa: E402,F401
+from conftest import csrf_of  # noqa: E402
+
+
+def test_safety_run_through_the_route_renders_provenance(signed_in, safety_env, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(runner, "get_adapter", lambda _p: StubAdapter(lambda _q: "I cannot help with that."))
+    response = signed_in.post(
+        "/runs",
+        data={"csrf_token": csrf_of(signed_in), "suite_id": "ailuminate",
+              "target_id": "1", "mode": "sample"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303, response.text[:300]
+    run_id = int(response.headers["location"].rsplit("/", 1)[-1])
+    assert _wait_for(signed_in, run_id)["status"] == "done"
+    page = signed_in.get(f"/runs/{run_id}").text
+    assert "Unofficial self-run score" in page
+    assert "uncalibrated" in page
+    assert "judge-x" in page

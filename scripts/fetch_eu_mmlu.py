@@ -12,7 +12,9 @@ manifest can pin what it used (REQ-EUM-07).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+from collections import Counter
 import sys
 from pathlib import Path
 
@@ -94,17 +96,50 @@ def main() -> int:
                 if offset % 2000 == 0:
                     print(f"  {written}/{target}")
 
+    languages: Counter = Counter()
+    subjects: Counter = Counter()
+    answers: Counter = Counter()
+    with OUT.open(encoding="utf-8") as handle:
+        for line in handle:
+            row = json.loads(line)
+            languages[row.get("Language")] += 1
+            subjects[row.get("Subject")] += 1
+            answers[repr(row.get("Answer"))] += 1
+
+    sha = hashlib.sha256(OUT.read_bytes()).hexdigest()
+    commit = _hub_commit()
     REVISION_FILE.write_text(
         json.dumps(
             {"dataset": DATASET, "config": config, "split": split, "rows": written,
-             "source": "huggingface datasets-server"},
+             "source": "huggingface datasets-server", "hub_commit": commit, "sha256": sha,
+             "languages": dict(languages), "subjects": dict(subjects)},
             indent=2,
         ),
         encoding="utf-8",
     )
     print(f"wrote {written} rows to {OUT}")
-    print(f"Pin this in packs/suites/eu_mmlu.yaml -> dataset.revision before a scored run.")
+    print(f"languages ({len(languages)}): {dict(languages)}")
+    print(f"subjects  ({len(subjects)}): {dict(subjects)}")
+    print(f"Answer values seen: {dict(answers)}")
+    if len(languages) < 16 or "en" not in {str(k).lower() for k in languages}:
+        print("WARNING: fewer than 16 languages (or no English) in the output. The datasets "
+              "server returns rows in file order, so --limit gives a prefix, not a stratified "
+              "sample, and language parity cannot be computed on it. Fetch without --limit; "
+              "sample mode in the app already selects a small, language-matched subset.",
+              file=sys.stderr)
+    print(f"Pin dataset.revision in packs/suites/eu_mmlu.yaml to: {commit or 'sha256:' + sha}")
     return 0
+
+
+def _hub_commit() -> str | None:
+    """Best-effort upstream commit sha, so the pin survives a re-upload."""
+    try:
+        response = httpx.get(f"https://huggingface.co/api/datasets/{DATASET}", timeout=30.0,
+                             follow_redirects=True)
+        response.raise_for_status()
+        return response.json().get("sha")
+    except (httpx.HTTPError, ValueError):
+        return None
 
 
 if __name__ == "__main__":

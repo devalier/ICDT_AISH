@@ -284,6 +284,17 @@ def _validate_items(c: _Collector, packs: Packs, f: str, suite: dict) -> None:
                     f"{prefix}expected",
                     f"{expected!r} is not one of {list(spec.GROUNDING_OUTCOMES)}",
                 )
+            if expected == "grounded" and not (
+                item.get("reference_answer") or item.get("reference_answers")
+            ):
+                c.error(
+                    f,
+                    f"{prefix}reference_answers",
+                    "an answerable item needs reference_answers; without one it cannot be "
+                    "checked and would score as unparseable",
+                )
+            if item.get("check_citation") and not item.get("source"):
+                c.error(f, f"{prefix}source", "check_citation needs a supplied source to check against")
 
 
 def _validate_bias_item(
