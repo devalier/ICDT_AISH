@@ -126,7 +126,7 @@ class GuardRailTest(unittest.TestCase):
         self.assertFires("is not a semantic version")
 
     def test_changelog_head_must_match_suite_version(self):
-        self.suite()["version"] = "0.2.0"
+        self.suite()["version"] = "9.9.9"
         self.assertFires("bump one of them")
 
     def test_empty_changelog_is_rejected(self):

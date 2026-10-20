@@ -21,7 +21,7 @@ import csv
 import hashlib
 import io
 import json
-import subprocess
+import subprocess  # nosec B404 - fixed argv, no shell, no user input
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,7 +43,7 @@ REVISION_FILE = Path("data/ailuminate.revision.json")
 
 def _upstream_commit() -> str | None:
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607 - constant argv; git resolved from PATH
             ["git", "ls-remote", REPO_URL, "HEAD"],
             capture_output=True, text=True, timeout=30, check=True,
         ).stdout.split()

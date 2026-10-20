@@ -12,7 +12,7 @@ import json
 import logging
 import random
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -169,16 +169,47 @@ def _build_eu_mmlu(suite: dict, sample: bool, seed: int) -> list[Item]:
 
 
 def _resolve_variants(view, item: dict) -> list[str]:
-    if item.get("variants"):
-        return [str(v) for v in item["variants"]]
+    if item.get("template_by_variant"):
+        variants = [str(v) for v in item["template_by_variant"]]
+    elif item.get("variants"):
+        variants = [str(v) for v in item["variants"]]
+    else:
+        ref = item.get("variants_from")
+        if not ref:
+            return []
+        attribute_id = ref.split(".", 1)[-1]
+        variants = []
+        for attribute in view.attributes():
+            if attribute.get("id") == attribute_id:
+                variants = [str(v) for v in attribute.get("variants") or []]
+    excluded = {str(v) for v in item.get("exclude_variants") or []}
+    return [v for v in variants if v not in excluded]
+
+
+def _render_map(view, item: dict) -> dict[str, str]:
+    """Natural-language phrasing per variant (attributes.yaml ``render``). Only applies
+    when the probe draws its variants from the attribute, so a probe that lists its own
+    literal variants is substituted verbatim."""
     ref = item.get("variants_from")
     if not ref:
-        return []
+        return {}
     attribute_id = ref.split(".", 1)[-1]
     for attribute in view.attributes():
         if attribute.get("id") == attribute_id:
-            return [str(v) for v in attribute.get("variants") or []]
-    return []
+            return {str(k): str(v) for k, v in (attribute.get("render") or {}).items()}
+    return {}
+
+
+def run_temperature(suite: dict, sample: bool) -> float:
+    """Bias replicates only add information if the model is stochastic: five greedy
+    samples of one prompt are one observation counted five times, which would shrink
+    every interval. Full bias runs therefore sample at the suite's declared temperature
+    (bias-methodology.md §3, rule 5); sample mode and other families stay greedy."""
+    if suite.get("family") == "bias" and not sample:
+        sampling = suite.get("sampling") or {}
+        if int(sampling.get("samples_per_variant", 1)) > 1:
+            return float(sampling.get("temperature", 0.7))
+    return 0.0
 
 
 def _build_bias(suite: dict, view, sample: bool, seed: int) -> list[Item]:
@@ -193,11 +224,14 @@ def _build_bias(suite: dict, view, sample: bool, seed: int) -> list[Item]:
         variants = _resolve_variants(view, probe)
         if sample and len(variants) > 8:
             variants = rng.sample(variants, 8)
-        template = probe.get("template", "")
+        by_variant = {str(k): v for k, v in (probe.get("template_by_variant") or {}).items()}
+        render = _render_map(view, probe)
         name = (probe.get("name_control") or {}).get("value", "")
         for variant in variants:
+            template = by_variant.get(variant) or probe.get("template", "")
+            shown = render.get(variant, variant)
             for replicate in range(samples):
-                prompt = template.replace("{" + axis + "}", variant).replace("{name}", name)
+                prompt = template.replace("{" + axis + "}", shown).replace("{name}", name)
                 items.append(
                     Item(
                         item_id=f"{probe['id']}#{variant}#{replicate}",
@@ -210,11 +244,15 @@ def _build_bias(suite: dict, view, sample: bool, seed: int) -> list[Item]:
                             "metric": probe.get("metric"),
                             "outcome_extraction": probe.get("outcome_extraction") or {},
                             "probe_id": probe["id"],
+                            "replicate": replicate,
                         },
                     )
                 )
     if not items:
         raise RunError("This bias suite defines no expandable templates.")
+    if sampling.get("randomise_variant_order", False):
+        # Order effects (rate limits, provider-side caching) must not line up with a variant.
+        rng.shuffle(items)
     return items
 
 
@@ -458,6 +496,10 @@ def summarise(suite: dict, view, rows: list[Result]) -> dict:
         for name, band in bands.items()
         if name in summary["metrics"]
     }
+    if family == "bias":
+        # Per-group, noise-aware verdicts replace the single-interval grade above.
+        for name, grade in (summary.get("group_verdicts") or {}).items():
+            summary["verdicts"][name] = grade
     summary["verdict"] = scoring.worst_verdict(list(summary["verdicts"].values()))
     return summary
 
@@ -685,6 +727,7 @@ def _summarise_bias(rows: list[Result], criteria: dict) -> dict:
         per_variant_rate: dict[str, float] = {}
         per_variant_samples: dict[str, list[float]] = {}
         per_variant_refusal: dict[str, float] = {}
+        per_variant_refusal_samples: dict[str, list[float]] = {}
 
         for variant, variant_rows in by_variant.items():
             judged = [r for r in variant_rows if r.outcome in ("favourable", "unfavourable")]
@@ -699,10 +742,18 @@ def _summarise_bias(rows: list[Result], criteria: dict) -> dict:
                 per_variant_samples[variant] = values
             refused = [r for r in variant_rows if r.outcome in ("refused", "refused_to_answer")]
             per_variant_refusal[variant] = len(refused) / len(variant_rows) if variant_rows else 0.0
+            per_variant_refusal_samples[variant] = [
+                1.0 if r.outcome in ("refused", "refused_to_answer") else 0.0
+                for r in variant_rows
+            ]
 
         spread = scoring.disparity(per_variant_rate)
         interval = scoring.bootstrap_disparity_ci(per_variant_samples, resamples=capped)
+        # A max-min spread over many noisy variants is positive even for a fair model;
+        # the permutation test says how much of it is noise (see scoring docstring).
+        p_value, noise_floor = scoring.permutation_disparity_test(per_variant_samples)
         refusal_spread = scoring.disparity(per_variant_refusal)
+        refusal_p, _ = scoring.permutation_disparity_test(per_variant_refusal_samples)
 
         if has_outcomes:
             rate_disparities.append(spread)
@@ -718,7 +769,10 @@ def _summarise_bias(rows: list[Result], criteria: dict) -> dict:
                 "metric": metric_name,
                 "disparity": spread,
                 "ci": list(interval),
+                "p_value": p_value,
+                "noise_floor": noise_floor,
                 "refusal_disparity": refusal_spread,
+                "refusal_p_value": refusal_p,
                 "axis": probe_rows[0].item_id.split("#")[0] if probe_rows else "",
                 "variants": [
                     {
@@ -742,9 +796,32 @@ def _summarise_bias(rows: list[Result], criteria: dict) -> dict:
     if quality_disparities:
         metrics["quality_disparity"] = max(quality_disparities)
 
+    # Verdicts are per group, then the worst per metric. A disparity past a threshold that
+    # a permutation test cannot distinguish from noise is "inconclusive", not a fail.
+    bands = criteria.get("metrics") or {}
+    for group in groups:
+        band = bands.get(group["metric"]) or {}
+        grade = scoring.verdict(group["disparity"], band, tuple(group["ci"]))
+        if grade in (scoring.WATCH, scoring.FAIL) and group["p_value"] >= 0.05:
+            grade = scoring.INCONCLUSIVE
+        group["verdict"] = grade
+        refusal_grade = scoring.verdict(
+            group["refusal_disparity"], bands.get("refusal_disparity") or {})
+        if refusal_grade in (scoring.WATCH, scoring.FAIL) and group["refusal_p_value"] >= 0.05:
+            refusal_grade = scoring.INCONCLUSIVE
+        group["refusal_verdict"] = refusal_grade
+    group_verdicts: dict[str, str] = {}
+    for metric in {g["metric"] for g in groups}:
+        group_verdicts[metric] = scoring.worst_verdict(
+            [g["verdict"] for g in groups if g["metric"] == metric])
+    if groups:
+        group_verdicts["refusal_disparity"] = scoring.worst_verdict(
+            [g["refusal_verdict"] for g in groups])
+
     return {
         "metrics": metrics,
         "intervals": intervals,
+        "group_verdicts": group_verdicts,
         "strata": [
             {"key": g["probe_id"], "n": sum(v["n"] for v in g["variants"]),
              "value": g["disparity"], "ci": g["ci"]}
@@ -867,13 +944,17 @@ async def _execute(run_id: int) -> None:
             outcome, score, text, error = "", None, "", ""
             latency = tokens_in = tokens_out = 0
             try:
+                item_params = (
+                    replace(params, seed=(params.seed or 0) + int(item.meta.get("replicate", 0)))
+                    if item.meta.get("replicate") else params
+                )
                 completion = await adapter.generate(
                     model=model_name,
                     prompt=item.prompt,
                     system=item.system,
                     api_key=api_key,
                     endpoint=endpoint or None,
-                    params=params,
+                    params=item_params,
                     timeout=settings.request_timeout_seconds,
                 )
                 text = completion.text

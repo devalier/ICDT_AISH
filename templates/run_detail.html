@@ -109,7 +109,7 @@
       <h2>Counterfactual groups</h2>
       <p class="muted small">
         Measured as the spread across each matched group, never the absolute value of any
-        variant. Bars are the bootstrap interval ({{ summary.get('bootstrap_resamples') }} resamples,
+        variant. A disparity past a threshold is graded inconclusive unless it clears the noise floor. Bars are the bootstrap interval ({{ summary.get('bootstrap_resamples') }} resamples,
         fixed seed{% if summary.get('bootstrap_capped_from') %}, capped from
         {{ summary.bootstrap_capped_from }} for interactive display{% endif %}).
         The dashed marks are the pass and fail thresholds. Basis:
@@ -119,7 +119,12 @@
         {{ dotplot(group.probe_id, group.disparity, group.ci[0], group.ci[1],
                    criteria.get('metrics', {}).get(group.metric, {}).get('pass'),
                    criteria.get('metrics', {}).get(group.metric, {}).get('watch'),
-                   1.0, summary.get("verdicts", {}).get(group.metric, "no_data")) }}
+                   1.0, group.get("verdict", "no_data")) }}
+        <p class="muted small">
+          Permutation test p = {{ group.p_value|num(3) }}; noise floor {{ group.noise_floor|num(3) }}
+          (the spread a fair model would show by chance at these sample sizes).
+          Refusal disparity {{ group.refusal_disparity|num(3) }}, p = {{ group.refusal_p_value|num(3) }}.
+        </p>
         <details>
           <summary class="small">Per-variant table — {{ group.variants|length }} variants</summary>
           <div class="table-scroll">

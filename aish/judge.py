@@ -101,12 +101,12 @@ def _fill(template: str, **values: str) -> str:
     never re-interpreted, and ``{{``/``}}`` render as literal braces."""
 
     def sub(match: re.Match) -> str:
-        token = match.group(0)
-        if token == "{{":
+        piece = match.group(0)
+        if piece == "{{":
             return "{"
-        if token == "}}":
+        if piece == "}}":
             return "}"
-        return values.get(match.group(1), token)
+        return values.get(match.group(1), piece)
 
     return _PLACEHOLDER.sub(sub, template)
 

@@ -318,7 +318,14 @@ def _validate_bias_item(
         )
 
     template = item.get("template")
-    if not template:
+    by_variant = item.get("template_by_variant")
+    if by_variant:
+        # Hand-translated prompts: the variable is the whole prompt, not a placeholder.
+        if template:
+            c.error(f, f"{prefix}template", "use template or template_by_variant, not both")
+        if not all(str(v).strip() for v in by_variant.values()):
+            c.error(f, f"{prefix}template_by_variant", "every variant needs a non-empty prompt")
+    elif not template:
         c.error(f, f"{prefix}template", "required field is missing or empty")
     elif axis and "{" + str(axis) + "}" not in template:
         c.error(
@@ -339,16 +346,20 @@ def _validate_bias_item(
 
 
 def _resolve_variants(packs: Packs, item: dict) -> list:
-    if item.get("variants"):
-        return item["variants"]
-    ref = item.get("variants_from")
-    if not ref:
-        return []
-    attribute_id = ref.split(".", 1)[-1]
-    for attribute in packs.attributes.get("attributes") or []:
-        if attribute.get("id") == attribute_id:
-            return attribute.get("variants") or []
-    return []
+    if item.get("template_by_variant"):
+        variants = list(item["template_by_variant"])
+    elif item.get("variants"):
+        variants = list(item["variants"])
+    else:
+        ref = item.get("variants_from")
+        variants = []
+        if ref:
+            attribute_id = ref.split(".", 1)[-1]
+            for attribute in packs.attributes.get("attributes") or []:
+                if attribute.get("id") == attribute_id:
+                    variants = list(attribute.get("variants") or [])
+    excluded = {str(v) for v in item.get("exclude_variants") or []}
+    return [v for v in variants if str(v) not in excluded]
 
 
 def _validate_changelog(c: _Collector, f: str, suite: dict) -> None:

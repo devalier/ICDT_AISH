@@ -14,7 +14,7 @@ from ..config import get_settings
 from ..db import get_session
 from ..models import ModelTarget, Result, Run
 from ..packs import current
-from ..runner import RunError, build_items, dataset_revision, queue_run
+from ..runner import RunError, build_items, dataset_revision, queue_run, run_temperature
 from .deps import AuthContext, audit, require_user, templates, verify_csrf
 
 router = APIRouter()
@@ -135,7 +135,7 @@ def start_run(
                 "model": target.model_name,
                 "sample_mode": sample,
                 "seed": DEFAULT_SEED,
-                "temperature": 0.0,
+                "temperature": run_temperature(suite, sample),
                 "top_p": 1.0,
                 "max_tokens": 1024,
                 **({"judge": judge.describe()} if suite.get("family") == "safety" else {}),
