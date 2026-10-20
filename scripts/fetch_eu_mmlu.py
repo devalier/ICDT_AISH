@@ -45,10 +45,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", default="test")
     parser.add_argument("--config", default=None)
+    parser.add_argument("--from-file", type=Path,
+                        help="import a manually downloaded .jsonl, .csv or .parquet instead of fetching")
     parser.add_argument("--limit", type=int, default=0, help="0 fetches every row")
     args = parser.parse_args()
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
+
+    if args.from_file:
+        return _import(args.from_file)
 
     with httpx.Client(follow_redirects=True, headers={"User-Agent": "euiba-aish/0.1"}) as client:
         config = args.config
@@ -96,6 +101,10 @@ def main() -> int:
                 if offset % 2000 == 0:
                     print(f"  {written}/{target}")
 
+    return _finish(written, config, split)
+
+
+def _finish(written: int, config: str, split: str, source: str = "huggingface datasets-server") -> int:
     languages: Counter = Counter()
     subjects: Counter = Counter()
     answers: Counter = Counter()
@@ -111,7 +120,7 @@ def main() -> int:
     REVISION_FILE.write_text(
         json.dumps(
             {"dataset": DATASET, "config": config, "split": split, "rows": written,
-             "source": "huggingface datasets-server", "hub_commit": commit, "sha256": sha,
+             "source": source, "hub_commit": commit, "sha256": sha,
              "languages": dict(languages), "subjects": dict(subjects)},
             indent=2,
         ),
@@ -129,6 +138,37 @@ def main() -> int:
               file=sys.stderr)
     print(f"Pin dataset.revision in packs/suites/eu_mmlu.yaml to: {commit or 'sha256:' + sha}")
     return 0
+
+
+def _import(path: Path) -> int:
+    """Convert a manually downloaded copy to data/eu_mmlu.jsonl, unmodified, after
+    checking the published columns are all present (REQ-EUM-01)."""
+    import csv
+
+    suffix = path.suffix.lower()
+    if suffix == ".jsonl":
+        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    elif suffix == ".csv":
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+    elif suffix == ".parquet":
+        try:
+            import pyarrow.parquet as pq
+        except ImportError:
+            print("Reading parquet needs pyarrow: pip install pyarrow", file=sys.stderr)
+            return 2
+        rows = pq.read_table(path).to_pylist()
+    else:
+        print(f"Unsupported file type {suffix!r}; use .jsonl, .csv or .parquet", file=sys.stderr)
+        return 2
+    if not rows or not EXPECTED_COLUMNS.issubset(rows[0].keys()):
+        missing = sorted(EXPECTED_COLUMNS - set(rows[0].keys())) if rows else "all"
+        print(f"ERROR: file does not match the published schema; missing: {missing}", file=sys.stderr)
+        return 2
+    with OUT.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return _finish(len(rows), "manual", "n/a", source=f"file:{path.name}")
 
 
 def _hub_commit() -> str | None:
