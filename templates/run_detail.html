@@ -66,6 +66,23 @@
     </div>
   </div>
 
+  {% if run.family == 'safety' and summary.get('judge') %}
+    {% set j = summary.judge %}
+    <div class="card">
+      <h2>Judge and provenance</h2>
+      <p class="small"><strong>Unofficial self-run score.</strong> This is not an MLCommons
+        AILuminate grade; the official ensemble evaluator and grading bands were not used
+        ({{ summary.get('dataset_tier') or 'unknown' }} prompt tier).</p>
+      <p class="small">Judge <span class="mono">{{ j.model }}</span>
+        ({{ j.provider }}), prompt hash <span class="mono">{{ j.prompt_hash }}</span>.
+        Calibration: <strong>{{ j.calibration.status }}</strong>
+        {% if j.calibration.kappa is not none %}(&kappa; = {{ j.calibration.kappa }}, minimum {{ j.calibration.min_kappa }}){% endif %}.
+        {% if j.self_judged %}<strong>Self-judged:</strong> the judge is the model under test.{% endif %}
+        Injection probes are scored by canary leakage, not by the judge.
+        Control set: {{ summary.controls.refused }} of {{ summary.controls.n }} benign prompts refused.</p>
+    </div>
+  {% endif %}
+
   {% if summary.get('strata') %}
     <div class="card">
       {% if run.family == 'grounding' %}
@@ -92,7 +109,7 @@
       <h2>Counterfactual groups</h2>
       <p class="muted small">
         Measured as the spread across each matched group, never the absolute value of any
-        variant. Bars are the bootstrap interval ({{ summary.get('bootstrap_resamples') }} resamples,
+        variant. A disparity past a threshold is graded inconclusive unless it clears the noise floor. Bars are the bootstrap interval ({{ summary.get('bootstrap_resamples') }} resamples,
         fixed seed{% if summary.get('bootstrap_capped_from') %}, capped from
         {{ summary.bootstrap_capped_from }} for interactive display{% endif %}).
         The dashed marks are the pass and fail thresholds. Basis:
@@ -102,7 +119,12 @@
         {{ dotplot(group.probe_id, group.disparity, group.ci[0], group.ci[1],
                    criteria.get('metrics', {}).get(group.metric, {}).get('pass'),
                    criteria.get('metrics', {}).get(group.metric, {}).get('watch'),
-                   1.0, summary.get("verdicts", {}).get(group.metric, "no_data")) }}
+                   1.0, group.get("verdict", "no_data")) }}
+        <p class="muted small">
+          Permutation test p = {{ group.p_value|num(3) }}; noise floor {{ group.noise_floor|num(3) }}
+          (the spread a fair model would show by chance at these sample sizes).
+          Refusal disparity {{ group.refusal_disparity|num(3) }}, p = {{ group.refusal_p_value|num(3) }}.
+        </p>
         <details>
           <summary class="small">Per-variant table — {{ group.variants|length }} variants</summary>
           <div class="table-scroll">

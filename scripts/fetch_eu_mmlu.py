@@ -12,7 +12,9 @@ manifest can pin what it used (REQ-EUM-07).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+from collections import Counter
 import sys
 from pathlib import Path
 
@@ -43,10 +45,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", default="test")
     parser.add_argument("--config", default=None)
+    parser.add_argument("--from-file", type=Path,
+                        help="import a manually downloaded .jsonl, .csv or .parquet instead of fetching")
     parser.add_argument("--limit", type=int, default=0, help="0 fetches every row")
     args = parser.parse_args()
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
+
+    if args.from_file:
+        return _import(args.from_file)
 
     with httpx.Client(follow_redirects=True, headers={"User-Agent": "euiba-aish/0.1"}) as client:
         config = args.config
@@ -94,17 +101,85 @@ def main() -> int:
                 if offset % 2000 == 0:
                     print(f"  {written}/{target}")
 
+    return _finish(written, config, split)
+
+
+def _finish(written: int, config: str, split: str, source: str = "huggingface datasets-server") -> int:
+    languages: Counter = Counter()
+    subjects: Counter = Counter()
+    answers: Counter = Counter()
+    with OUT.open(encoding="utf-8") as handle:
+        for line in handle:
+            row = json.loads(line)
+            languages[row.get("Language")] += 1
+            subjects[row.get("Subject")] += 1
+            answers[repr(row.get("Answer"))] += 1
+
+    sha = hashlib.sha256(OUT.read_bytes()).hexdigest()
+    commit = _hub_commit()
     REVISION_FILE.write_text(
         json.dumps(
             {"dataset": DATASET, "config": config, "split": split, "rows": written,
-             "source": "huggingface datasets-server"},
+             "source": source, "hub_commit": commit, "sha256": sha,
+             "languages": dict(languages), "subjects": dict(subjects)},
             indent=2,
         ),
         encoding="utf-8",
     )
     print(f"wrote {written} rows to {OUT}")
-    print(f"Pin this in packs/suites/eu_mmlu.yaml -> dataset.revision before a scored run.")
+    print(f"languages ({len(languages)}): {dict(languages)}")
+    print(f"subjects  ({len(subjects)}): {dict(subjects)}")
+    print(f"Answer values seen: {dict(answers)}")
+    if len(languages) < 16 or "en" not in {str(k).lower() for k in languages}:
+        print("WARNING: fewer than 16 languages (or no English) in the output. The datasets "
+              "server returns rows in file order, so --limit gives a prefix, not a stratified "
+              "sample, and language parity cannot be computed on it. Fetch without --limit; "
+              "sample mode in the app already selects a small, language-matched subset.",
+              file=sys.stderr)
+    print(f"Pin dataset.revision in packs/suites/eu_mmlu.yaml to: {commit or 'sha256:' + sha}")
     return 0
+
+
+def _import(path: Path) -> int:
+    """Convert a manually downloaded copy to data/eu_mmlu.jsonl, unmodified, after
+    checking the published columns are all present (REQ-EUM-01)."""
+    import csv
+
+    suffix = path.suffix.lower()
+    if suffix == ".jsonl":
+        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    elif suffix == ".csv":
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+    elif suffix == ".parquet":
+        try:
+            import pyarrow.parquet as pq
+        except ImportError:
+            print("Reading parquet needs pyarrow: pip install pyarrow", file=sys.stderr)
+            return 2
+        rows = pq.read_table(path).to_pylist()
+    else:
+        print(f"Unsupported file type {suffix!r}; use .jsonl, .csv or .parquet", file=sys.stderr)
+        return 2
+    if not rows or not EXPECTED_COLUMNS.issubset(rows[0].keys()):
+        missing = sorted(EXPECTED_COLUMNS - set(rows[0].keys())) if rows else "all"
+        print(f"ERROR: file does not match the published schema; missing: {missing}", file=sys.stderr)
+        return 2
+    with OUT.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return _finish(len(rows), "manual", "n/a", source=f"file:{path.name}")
+
+
+def _hub_commit() -> str | None:
+    """Best-effort upstream commit sha, so the pin survives a re-upload."""
+    try:
+        response = httpx.get(f"https://huggingface.co/api/datasets/{DATASET}", timeout=30.0,
+                             follow_redirects=True)
+        response.raise_for_status()
+        return response.json().get("sha")
+    except (httpx.HTTPError, ValueError):
+        return None
 
 
 if __name__ == "__main__":

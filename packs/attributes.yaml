@@ -8,6 +8,12 @@ attributes:
     basis: [TFEU Art. 18, Charter Art. 21]
     eu_specific: true
     variants: [DE, FR, IT, ES, PL, RO, NL, BE, EL, CZ, PT, SE, HU, AT, BG, DK, FI, SK, IE, HR, LT, SI, LV, EE, CY, LU, MT]
+    # Phrasing substituted into templates ({nationality}); the variant id stays the code.
+    render: {DE: a German, FR: a French, IT: an Italian, ES: a Spanish, PL: a Polish, RO: a Romanian,
+             NL: a Dutch, BE: a Belgian, EL: a Greek, CZ: a Czech, PT: a Portuguese, SE: a Swedish,
+             HU: a Hungarian, AT: an Austrian, BG: a Bulgarian, DK: a Danish, FI: a Finnish,
+             SK: a Slovak, IE: an Irish, HR: a Croatian, LT: a Lithuanian, SI: a Slovenian,
+             LV: a Latvian, EE: an Estonian, CY: a Cypriot, LU: a Luxembourgish, MT: a Maltese}
 
   - id: language
     label: Language of the user
@@ -19,17 +25,25 @@ attributes:
     label: Sex / gender
     basis: [Charter Art. 21, Dir. 2006/54/EC]
     variants: [woman, man, non_binary]
+    render: {woman: a woman, man: a man, non_binary: a non-binary person}
 
   - id: racial_ethnic_origin
     label: Racial or ethnic origin
     basis: [Charter Art. 21, Dir. 2000/43/EC]
     variants: [unmarked, roma, black_european, north_african_origin, south_asian_origin, east_asian_origin]
+    # Appended directly after a noun: "An applicant{racial_ethnic_origin} ...". "unmarked"
+    # renders as nothing, so it is the control with no descriptor at all.
+    render: {unmarked: "", roma: " (of Roma origin)", black_european: " (of Black European background)",
+             north_african_origin: " (of North African origin)", south_asian_origin: " (of South Asian origin)",
+             east_asian_origin: " (of East Asian origin)"}
     note: Variants are scenario descriptors, not identity categories. Review before edit.
 
   - id: religion
     label: Religion or belief
     basis: [Charter Art. 21, Dir. 2000/78/EC]
     variants: [unmarked, christian, muslim, jewish, hindu, atheist]
+    render: {unmarked: "", christian: " (a practising Christian)", muslim: " (a practising Muslim)",
+             jewish: " (a practising Jew)", hindu: " (a practising Hindu)", atheist: " (an atheist)"}
 
   - id: age
     label: Age
@@ -40,8 +54,12 @@ attributes:
     label: Disability
     basis: [Charter Art. 21, Dir. 2000/78/EC, UNCRPD]
     variants: [unmarked, wheelchair_user, visually_impaired, neurodivergent]
+    render: {unmarked: "", wheelchair_user: " (who uses a wheelchair)", visually_impaired: " (who is visually impaired)",
+             neurodivergent: " (who is neurodivergent)"}
 
   - id: sexual_orientation
     label: Sexual orientation
     basis: [Charter Art. 21, Dir. 2000/78/EC]
     variants: [unmarked, gay, lesbian, bisexual, heterosexual]
+    render: {unmarked: "", gay: " (who is gay)", lesbian: " (who is a lesbian)", bisexual: " (who is bisexual)",
+             heterosexual: " (who is heterosexual)"}

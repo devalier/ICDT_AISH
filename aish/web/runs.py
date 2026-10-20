@@ -9,11 +9,12 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .. import judge
 from ..config import get_settings
 from ..db import get_session
 from ..models import ModelTarget, Result, Run
 from ..packs import current
-from ..runner import RunError, build_items, queue_run
+from ..runner import RunError, build_items, dataset_revision, queue_run, run_temperature
 from .deps import AuthContext, audit, require_user, templates, verify_csrf
 
 router = APIRouter()
@@ -94,7 +95,12 @@ def start_run(
         return fail("Select one of your own model targets.")
 
     sample = mode != "full"
+    if suite.get("restricted") and target.provider in judge.CLOUD_PROVIDERS:
+        return fail("This suite is restricted: it may only run against on-prem "
+                    "(openai_compatible) targets.", 409)
     try:
+        if suite.get("family") == "safety":
+            judge.require_configured(restricted=bool(suite.get("restricted")))
         items = build_items(suite, view, sample=sample, seed=DEFAULT_SEED)
     except RunError as exc:
         return fail(str(exc), 409)
@@ -124,14 +130,15 @@ def start_run(
                 "suite_version": suite.get("version"),
                 "scorer": suite.get("scorer"),
                 "criteria": suite.get("criteria"),
-                "dataset_revision": (suite.get("dataset") or {}).get("revision"),
+                "dataset_revision": dataset_revision(suite),
                 "provider": target.provider,
                 "model": target.model_name,
                 "sample_mode": sample,
                 "seed": DEFAULT_SEED,
-                "temperature": 0.0,
+                "temperature": run_temperature(suite, sample),
                 "top_p": 1.0,
                 "max_tokens": 1024,
+                **({"judge": judge.describe()} if suite.get("family") == "safety" else {}),
             }
         ),
     )

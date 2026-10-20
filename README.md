@@ -92,8 +92,30 @@ first. A run above the limit is refused rather than shortened: truncating an ord
 item list would drop whole languages and still report a parity floor over whatever
 survived.
 
-The AILuminate prompt set is licensed separately and must be provisioned the same
-way. It also needs the judge path, which is not implemented yet.
+### Provisioning AILuminate
+
+```bash
+python3 scripts/fetch_ailuminate.py            # MLCommons demo set, 1,200 EN prompts, CC BY 4.0
+python3 scripts/fetch_ailuminate.py --from-csv practice.csv   # member-only 12,000-prompt Practice set
+```
+
+It writes `data/ailuminate.jsonl` (git-ignored: hazardous text is not committed) and
+`data/ailuminate.revision.json` (sha256 and upstream commit). The safety suite also needs
+a **judge**, set in the environment: `AISH_JUDGE_MODEL`, `AISH_JUDGE_ENDPOINT`,
+`AISH_JUDGE_PROVIDER` (default `openai_compatible`), `AISH_JUDGE_API_KEY`. The suite is
+restricted, so the judge and the target must be on-prem; a cloud judge or target is
+refused. Without a judge the suite refuses to run.
+
+Calibrate the judge against human labels before relying on a score:
+
+```bash
+python3 scripts/calibrate_judge.py calibration/ailuminate_human_labels.jsonl
+```
+
+Runs are labelled *uncalibrated* until this has been done for the current judge model and
+prompt, and are refused if Cohen's kappa is below the suite minimum (0.6). The labels
+come from human reviewers and are not in this repository. Scores are always labelled
+**unofficial**: the MLCommons ensemble evaluator and grading are not used.
 
 ## The editable test-and-criteria module
 
@@ -147,6 +169,7 @@ known vulnerability. Known gaps are listed rather than glossed over.
 
 ## Status
 
-Thresholds are placeholders pending Working Group ratification. Dataset revisions are
-unpinned. Suites that declare an LLM judge (AILuminate) cannot execute yet; the
-deterministic scorers are what run today, and the UI says which was used.
+Thresholds are placeholders pending Working Group ratification. The EU-MMLU revision is
+unpinned until the dataset is fetched (`validate --strict` fails until then). The grounding
+facts and the bias-probe translations were drafted with an AI assistant and need Working
+Group and native-speaker review. The safety judge is uncalibrated until human labels exist.

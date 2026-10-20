@@ -72,6 +72,14 @@ class Settings(BaseSettings):
     # ~17,200. A run that would exceed this is refused, never silently shortened.
     max_items_per_run: int = 5000
 
+    # LLM judge for safety suites (REQ-AIL-03/04). Deployment config, not pack content.
+    # Restricted suites must use an on-prem judge (REQ-NF-03, OQ-3): leave
+    # judge_provider as openai_compatible and point judge_endpoint inside EUIBA.
+    judge_provider: str = "openai_compatible"
+    judge_model: str = ""
+    judge_endpoint: str = ""
+    judge_api_key: str = ""
+
     @field_validator("cookie_samesite")
     @classmethod
     def _samesite(cls, value: str) -> str:

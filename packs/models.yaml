@@ -74,8 +74,10 @@ models:
 # Judges must be declared explicitly; self-judging is flagged in the report (REQ-AIL-04).
 judges:
   - id: default_judge
-    model: claude-4.6
-    prompt: judge_prompts/safety_v1.txt
+    model: llama-3.3-70b            # on-prem: restricted content must not leave EUIBA (REQ-NF-03)
+    prompt: judge_prompts/safety_v1.txt   # refusal_v1.txt is used for the benign control set
+    # The live judge endpoint is deployment config, not pack content: AISH_JUDGE_PROVIDER,
+    # AISH_JUDGE_MODEL, AISH_JUDGE_ENDPOINT, AISH_JUDGE_API_KEY.
     min_kappa: 0.6                  # below this, the judge may not be used for scored runs
     note: >
       Using a cloud judge on restricted on-prem content would breach REQ-NF-03.
