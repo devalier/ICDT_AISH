@@ -42,10 +42,10 @@ HEADLINE = {
     "grounding": ("hallucination_rate", "Hallucination rate", "lower"),
 }
 
-VERDICT_LABEL = {"pass": "Pass",  # nosec B105 - verdict label, not a credential "watch": "Watch", "fail": "Fail",
+VERDICT_LABEL = {"pass": "Pass", "watch": "Watch", "fail": "Fail",  # nosec B105
                  "inconclusive": "Inconclusive", "no_data": "No data"}
 # Status is never colour alone: every verdict also carries a glyph and its word.
-GLYPH = {"pass": "✓",  # nosec B105 - verdict glyph, not a credential "watch": "!", "fail": "✕", "inconclusive": "?", "no_data": "–"}
+GLYPH = {"pass": "✓", "watch": "!", "fail": "✕", "inconclusive": "?", "no_data": "–"}  # nosec B105
 
 GROUNDING_SEGMENTS = (
     ("grounded", "Grounded"),
