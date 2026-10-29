@@ -6,19 +6,18 @@
 
 <h1>Runs</h1>
 <p class="lede">
-  A run is a manifest: suite and version, model target, sampling parameters and dataset
-  revision. The same manifest reproduces the same item set.
+  A run tests one model with one test suite. The same settings always send the same prompts.
 </p>
 
 <div class="card">
   <h2>Start a run</h2>
   {% if not targets %}
-    <p>You have no model targets yet. <a href="/models">Add one first.</a></p>
+    <p>You have no models selected for benchmarking yet. <a href="/models">Add one first.</a></p>
   {% else %}
     <form method="post" action="/runs" class="form-row">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div>
-        <label for="suite_id">Suite</label>
+        <label for="suite_id">Test suite</label>
         <select id="suite_id" name="suite_id" required>
           {% for suite in suites %}
             <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (v{{ suite.version }})</option>
@@ -26,7 +25,7 @@
         </select>
       </div>
       <div>
-        <label for="target_id">Model target</label>
+        <label for="target_id">Model</label>
         <select id="target_id" name="target_id" required>
           {% for target in targets %}
             <option value="{{ target.id }}">{{ target.label }}</option>
@@ -54,8 +53,8 @@
     <table>
       <thead>
         <tr>
-          <th>Started</th><th>Suite</th><th>Target</th><th>Status</th>
-          <th class="num">Items</th><th>Verdict</th><th></th>
+          <th>Started</th><th>Test suite</th><th>Model</th><th>Status</th>
+          <th class="num">Prompts</th><th>Verdict</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -64,7 +63,7 @@
           <tr>
             <td class="nowrap small">{{ run.created_at|when }}</td>
             <td>
-              <a href="/runs/{{ run.id }}">{{ run.suite_id }}</a>
+              <a href="/runs/{{ run.id }}">{{ suite_names.get(run.suite_id, run.suite_id) }}</a>
               <div class="cell-meta">v{{ run.suite_version }}
                 {% if run.sample_mode %}· <span class="tag">sample</span>{% endif %}</div>
             </td>

@@ -17,7 +17,7 @@
     </div>
     <div class="nav">
       <span class="nav-label">Workflow</span>
-      <a href="/models" {% if active == 'models' %}class="active"{% endif %}><span class="step">1</span>My models</a>
+      <a href="/models" {% if active == 'models' %}class="active"{% endif %}><span class="step">1</span>Models Selected for Benchmarking</a>
       <a href="/runs" {% if active == 'runs' %}class="active"{% endif %}><span class="step">2</span>Run tests</a>
       <a href="/dashboard" {% if active == 'dashboard' %}class="active"{% endif %}><span class="step">3</span>Compare models</a>
 
@@ -55,6 +55,6 @@
     </footer>
   </main>
 </div>
-{% block scripts %}{% endblock %}
+{% block scripts %}<script src="/static/app.js"></script>{% endblock %}
 </body>
 </html>

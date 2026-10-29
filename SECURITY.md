@@ -55,7 +55,7 @@ User-supplied endpoints are validated in `validate_endpoint()`:
 - Redirects are not followed, so a validated endpoint cannot hand the request to an
   unvalidated one.
 - The check runs again immediately before every outbound call, not only when the
-  target was saved. A save-time-only check would be a time-of-check/time-of-use gap.
+  model was saved. A save-time-only check would be a time-of-check/time-of-use gap.
 
 ## Web hardening
 
@@ -77,7 +77,7 @@ User-supplied endpoints are validated in `validate_endpoint()`:
 ## Authorisation
 
 Every row lookup is scoped to the owning user in the query itself, not filtered after
-the fact. Supplying another account's target or run id returns 404, not 403 — the
+the fact. Supplying another account's model or run id returns 404, not 403 — the
 existence of the row is not disclosed. This is covered by tests
 (`test_one_user_cannot_see_another_users_target`,
 `test_one_user_cannot_read_another_users_run`).

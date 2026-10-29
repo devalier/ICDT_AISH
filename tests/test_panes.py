@@ -31,7 +31,7 @@ def test_sidebar_is_a_workflow_then_the_harness(client, register):
     page = client.get("/dashboard").text
     html = page[page.index("<nav"):page.index("</nav>")]
     order = [html.index(label) for label in
-             ("My models", "Run tests", "Compare models", "Test harness", "Methodology", "Test suites")]
+             ("Models Selected for Benchmarking", "Run tests", "Compare models", "Test harness", "Methodology", "Test suites")]
     assert order == sorted(order)
     for href in ("/suites/eu_mmlu", "/suites/ailuminate", "/suites/euiba_bias", "/suites/euiba_grounding"):
         assert f'href="{href}"' in html
@@ -55,7 +55,8 @@ def test_every_suite_page_renders_basis_tests_thresholds(client, register, suite
     text = page.text.lower()
     for needle in expect:
         assert needle.lower() in text, needle
-    for heading in ("1 · Basis", "2 · The tests", "3 · Results", "Thresholds in force", "Changelog"):
+    for heading in ("Results", "The tests", "Basis &amp; thresholds", "Readiness", "Provenance",
+                    "Thresholds in force", "Changelog"):
         assert heading in page.text
 
 
@@ -142,3 +143,54 @@ def test_comparison_charts_cover_every_model_and_axis(signed_in, monkeypatch):  
     assert 'style="' not in page
     # Axes with no runs say so instead of drawing an empty chart.
     assert "No language runs yet." in page and "No bias runs yet." in page
+
+
+def test_suite_page_is_tabbed_with_every_pane_in_the_markup(client, register):
+    """Tabs are progressive enhancement: with no JS every pane is simply visible."""
+    register(client)
+    page = client.get("/suites/euiba_bias").text
+    assert page.count('role="tab"') == 5 and page.count('role="tabpanel"') == 5
+    assert 'style="' not in page
+
+
+def test_dashboard_tabs_scorecard_links_resolve_to_panes(client, register):
+    register(client)
+    page = client.get("/dashboard").text
+    # Empty state has no tabs; once models exist the scorecard links target pane ids.
+    assert "Add a model" in page
+
+
+def test_models_page_lists_selected_models_before_the_add_form(signed_in):  # noqa: F811
+    page = signed_in.get("/models").text
+    assert "Models Selected for Benchmarking" in page
+    listed = page.index("Selected Models for Benchmarking")
+    adding = page.index("Add a model for benchmarking")
+    assert listed < adding
+    assert "Stub target" in page[listed:adding]
+    assert "Add a model target" not in page and "Your targets" not in page
+    assert 'style="' not in page
+
+
+def test_models_page_opens_the_add_form_when_nothing_is_selected(client, register):
+    register(client)
+    page = client.get("/models").text
+    assert re.search(r'<details class="card collapsible"\s+open', page)
+
+
+def test_no_user_facing_page_calls_a_model_a_target(signed_in):  # noqa: F811
+    """One vocabulary: a model selected for benchmarking is a 'model', never a 'target'."""
+    for path in ("/models", "/runs", "/dashboard", "/panes/scoring", "/suites/ailuminate",
+                 "/suites/euiba_bias", "/suites/eu_mmlu", "/suites/euiba_grounding"):
+        text = re.sub(r"<[^>]+>", " ", signed_in.get(path).text).lower().replace("stub target", "")
+        assert not re.search(r"\btargets?\b", text), path
+
+
+def test_run_pages_use_plain_language(signed_in, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(runner, "get_adapter", lambda _p: StubAdapter(lambda p: "I cannot find any record of that."))
+    run_id = _run(signed_in, "euiba_grounding")
+    detail = re.sub(r"<[^>]+>", " ", signed_in.get(f"/runs/{run_id}").text).lower()
+    evidence = re.sub(r"<[^>]+>", " ", signed_in.get(f"/runs/{run_id}/evidence").text).lower()
+    for text in (detail, evidence):
+        for jargon in ("stratum", "strata", "manifest", "evidence"):
+            assert jargon not in text, jargon
+    assert "run settings" in detail and "prompts and responses" in evidence

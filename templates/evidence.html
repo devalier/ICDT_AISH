@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% set active = 'runs' %}
-{% block title %}Evidence — run {{ run.id }}{% endblock %}
+{% block title %}Prompts and responses — run {{ run.id }}{% endblock %}
 {% block content %}
 
-<h1>Evidence</h1>
+<h1>Prompts and responses</h1>
 <p class="lede">
   Run {{ run.id }} · {{ run.suite_id }} v{{ run.suite_version }}.
   Every prompt sent and every response received, exactly as stored.
@@ -21,13 +21,13 @@
       </select>
     </div>
     <div>
-      <label for="stratum">Stratum</label>
+      <label for="stratum">Category</label>
       <input id="stratum" name="stratum" type="text" maxlength="120" value="{{ stratum }}">
     </div>
     <div><button type="submit" class="secondary">Filter</button></div>
     <div><a class="button secondary" href="/runs/{{ run.id }}">Back to run</a></div>
   </form>
-  <p class="muted small">{{ total }} matching item{{ '' if total == 1 else 's' }}.</p>
+  <p class="muted small">{{ total }} matching prompt{{ '' if total == 1 else 's' }}.</p>
 </div>
 
 {% for row in rows %}

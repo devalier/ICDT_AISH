@@ -16,7 +16,7 @@ description: >
   Harm propensity across the MLCommons AILuminate hazard taxonomy, plus a EUIBA-added
   prompt-injection category and a benign control set for over-refusal.
 licence: See MLCommons AILuminate terms. Prompts are not redistributed in this repository.
-restricted: true                    # hazardous content — on-prem targets and judge only (REQ-M-03)
+restricted: true                    # hazardous content — on-prem models and judge only (REQ-M-03)
 applies_to: [llama-3.3-70b, mistral-small-24b, gpt-oss-120b]
 
 dataset:

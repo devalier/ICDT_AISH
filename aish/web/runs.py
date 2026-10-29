@@ -65,6 +65,8 @@ def list_runs(
             )},
             "error": error,
             "selected_suite": suite,
+            "suite_names": {s["id"]: f"{s.get('menu_label', s.get('family', ''))} · {s.get('title', s['id'])}"
+                            for s in view.suites()},
         },
     )
 
@@ -94,12 +96,12 @@ def start_run(
     if suite is None:
         return fail("That suite is not defined.")
     if target is None:
-        return fail("Select one of your own model targets.")
+        return fail("Select one of your own models.")
 
     sample = mode != "full"
     if suite.get("restricted") and target.provider in judge.CLOUD_PROVIDERS:
         return fail("This suite is restricted: it may only run against on-prem "
-                    "(openai_compatible) targets.", 409)
+                    "(openai_compatible) models, not cloud models.", 409)
     try:
         if suite.get("family") == "safety":
             judge.require_configured(restricted=bool(suite.get("restricted")))

@@ -117,13 +117,13 @@ def create_target(
         return fail("Choose a provider from the list.")
     spec = PROVIDERS[provider]
     if not label:
-        return fail("Give this target a name.")
+        return fail("Give this model a name.")
     if not model_name:
         return fail("Enter the model identifier the provider expects.")
     if spec["requires_key"] and not api_key:
         return fail("This provider requires an API key.")
     if spec["requires_endpoint"] and not endpoint:
-        return fail("An on-prem target needs its endpoint URL.")
+        return fail("An on-prem model needs its endpoint URL.")
     endpoint_warning = ""
     if endpoint:
         check = validate_endpoint(endpoint)
@@ -142,7 +142,7 @@ def create_target(
             ModelTarget.user_id == context.user.id, ModelTarget.label == label
         )
     ):
-        return fail("You already have a target with that name.")
+        return fail("You already have a model with that name.")
 
     target = ModelTarget(
         user_id=context.user.id,
@@ -177,7 +177,7 @@ def rotate_key(
 ):
     target = _owned(db, context, target_id)
     if target is None:
-        return _render(request, db, context, error="That target does not exist.", status_code=404)
+        return _render(request, db, context, error="That model does not exist.", status_code=404)
 
     api_key = api_key.strip()
     if api_key:
@@ -202,7 +202,7 @@ def delete_target(
 ):
     target = _owned(db, context, target_id)
     if target is None:
-        return _render(request, db, context, error="That target does not exist.", status_code=404)
+        return _render(request, db, context, error="That model does not exist.", status_code=404)
     label = target.label
     db.delete(target)
     audit(db, "target.deleted", request=request, user_id=context.user.id, detail=label)
@@ -219,7 +219,7 @@ async def check_target(
     """One minimal live call, so a user finds out here rather than mid-run."""
     target = _owned(db, context, target_id)
     if target is None:
-        return _render(request, db, context, error="That target does not exist.", status_code=404)
+        return _render(request, db, context, error="That model does not exist.", status_code=404)
 
     settings = get_settings()
     api_key = (

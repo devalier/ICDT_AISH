@@ -4,10 +4,10 @@
 {% block title %}Run {{ run.id }} — {{ run.suite_id }}{% endblock %}
 {% block content %}
 
-<h1>{{ run.suite_id }} <span class="muted">· run {{ run.id }}</span></h1>
+<h1>{{ suite.get('menu_label', run.suite_id) if suite else run.suite_id }} <span class="muted">· {{ suite.get('title', '') if suite else '' }} · run {{ run.id }}</span></h1>
 <p class="lede">
-  {{ target.label if target else 'deleted target' }} ·
-  suite v{{ run.suite_version }} ·
+  {{ target.label if target else 'removed model' }} ·
+  test suite v{{ run.suite_version }} ·
   {% if run.sample_mode %}<span class="tag">sample</span> not comparable to a full run{% else %}full run{% endif %}
 </p>
 
@@ -21,7 +21,7 @@
             width="{{ ((run.items_done / run.items_total * 100) if run.items_total else 0)|round(1) }}"
             height="10" rx="5"></rect>
     </svg>
-    <p class="small" data-progress-text>{{ run.items_done }} of {{ run.items_total }} items — {{ run.status }}</p>
+    <p class="small" data-progress-text>{{ run.items_done }} of {{ run.items_total }} prompts — {{ run.status }}</p>
   </div>
 {% endif %}
 
@@ -32,7 +32,7 @@
 {% if run.status == 'done' %}
   <div class="stat-row">
     <div class="stat"><div class="k">Overall</div><div class="v">{{ verdict(summary.get('verdict')) }}</div></div>
-    <div class="stat"><div class="k">Items scored</div><div class="v">{{ summary.get('n', 0) }}</div></div>
+    <div class="stat"><div class="k">Prompts scored</div><div class="v">{{ summary.get('n', 0) }}</div></div>
     <div class="stat"><div class="k">Refusals</div><div class="v">{{ summary.get('refused', 0) }}</div></div>
     <div class="stat"><div class="k">Errors</div><div class="v">{{ summary.get('errors', 0) }}</div></div>
   </div>
@@ -91,15 +91,15 @@
           Share of responses in each outcome class. Correct abstention counts positively.
         </p>
       {% else %}
-        <h2>By stratum</h2>
+        <h2>By category</h2>
         <p class="muted small">
-          Strata are macro-averaged into the family score, so a large stratum cannot mask a
+          Categories are averaged equally into the axis score, so a large category cannot mask a
           small one. Intervals are Wilson score at 95%.
         </p>
       {% endif %}
-      {% for stratum in summary.strata %}
-        {{ hbar(stratum.key ~ '  (n=' ~ stratum.n ~ ')', stratum.value,
-                stratum.value|num(3), 1.0) }}
+      {% for category in summary.strata %}
+        {{ hbar(category.key ~ '  (n=' ~ category.n ~ ')', category.value,
+                category.value|num(3), 1.0) }}
       {% endfor %}
     </div>
   {% endif %}
@@ -158,7 +158,7 @@
         <tr>
           <td class="mono">{{ outcome }}</td>
           <td class="num">{{ count }}</td>
-          <td><a href="/runs/{{ run.id }}/evidence?outcome={{ outcome }}">View evidence</a></td>
+          <td><a href="/runs/{{ run.id }}/evidence?outcome={{ outcome }}">View prompts and responses</a></td>
         </tr>
       {% endfor %}
       </tbody>
@@ -178,7 +178,7 @@
 {% endif %}
 
 <div class="card">
-  <h2>Run manifest</h2>
+  <h2>Run settings</h2>
   <p class="muted small">
     Two results are comparable only when every line below matches.
   </p>

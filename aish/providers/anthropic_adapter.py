@@ -36,7 +36,7 @@ class AnthropicAdapter:
         timeout: float,
     ) -> Completion:
         if not api_key:
-            raise ProviderError("an Anthropic API key is required for this target")
+            raise ProviderError("an Anthropic API key is required for this model")
 
         client = anthropic.AsyncAnthropic(api_key=api_key, timeout=timeout, max_retries=2)
         request: dict = {

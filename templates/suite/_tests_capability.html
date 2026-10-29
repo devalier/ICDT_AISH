@@ -7,7 +7,7 @@
     <li><strong>Subjects:</strong> enumerated from the data (the announcement says seven, the dataset
       card eight; the data is the authority, OQ-1).
       {% if tests.subjects %}Reference list: {% for s in tests.subjects %}<span class="mono">{{ s }}</span>{{ ', ' if not loop.last }}{% endfor %}.{% endif %}</li>
-    <li><strong>Items:</strong> multiple choice, four options, one run per question per language.
+    <li><strong>Questions:</strong> multiple choice, four options, one run per question per language.
       Sample mode: {{ suite.sampling_mode.items_per_stratum }} questions per subject, the
       <em>same</em> questions in every language.</li>
     <li><strong>Scoring:</strong> deterministic answer extraction (letter, then index, then restated
