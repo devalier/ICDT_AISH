@@ -1,3 +1,48 @@
+/* Progressive enhancement: with JS, [data-tabs] groups show one pane at a time; without
+   it every pane is visible. No inline script: the CSP is script-src 'self'. */
+(function () {
+  "use strict";
+  document.documentElement.classList.add("js");
+  var groups = document.querySelectorAll("[data-tabs]");
+  groups.forEach(function (root) {
+    var tabs = Array.prototype.slice.call(root.querySelectorAll('[role="tab"]'));
+    var panes = {};
+    tabs.forEach(function (t) { panes[t.getAttribute("aria-controls")] = document.getElementById(t.getAttribute("aria-controls")); });
+
+    function show(id) {
+      tabs.forEach(function (t) {
+        var on = t.getAttribute("aria-controls") === id;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        panes[t.getAttribute("aria-controls")].hidden = !on;
+      });
+    }
+    function fromHash() {
+      var id = window.location.hash.slice(1);
+      if (id && panes[id]) { show(id); return true; }
+      return false;
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener("click", function () {
+        var id = t.getAttribute("aria-controls");
+        show(id);
+        if (window.history && window.history.replaceState) window.history.replaceState(null, "", "#" + id);
+      });
+      t.addEventListener("keydown", function (e) {
+        var next = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : null;
+        if (next === null) return;
+        var target = tabs[(next + tabs.length) % tabs.length];
+        target.focus(); target.click(); e.preventDefault();
+      });
+    });
+    if (!fromHash()) {
+      var initial = tabs.filter(function (t) { return t.getAttribute("aria-selected") === "true"; })[0] || tabs[0];
+      show(initial.getAttribute("aria-controls"));
+    }
+    window.addEventListener("hashchange", fromHash);
+  });
+})();
+
 /* Progress polling for an in-flight run. No inline script: the CSP is
    script-src 'self'. */
 (function () {

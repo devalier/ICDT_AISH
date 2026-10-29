@@ -6,9 +6,7 @@
 
 <h1>Compare models</h1>
 <p class="lede">
-  Four axes, reported separately. A model can be strong on one and unacceptable on another,
-  so nothing here is averaged into a single verdict. Every figure links to the run behind it,
-  and from there to the prompts and responses.
+  Four axes, never averaged: a model can be strong on one and unacceptable on another. Every figure links to its run, and from there to the prompts and responses.
 </p>
 
 {% if pack_problems %}
@@ -40,12 +38,7 @@
 {% else %}
 
 <div class="card">
-  <h2>Scorecard</h2>
-  <p class="muted small">
-    One row per model, one cell per axis. The number is the axis' headline metric; the colour,
-    symbol and word are its verdict against the thresholds in
-    <a href="/panes/scoring">packs/criteria.yaml</a>.
-  </p>
+  <h2>Scorecard <span class="muted small">headline metric per axis · verdict against <a href="/panes/scoring">packs/criteria.yaml</a></span></h2>
   <div class="table-scroll">
     <table class="scorecard">
       <thead>
@@ -87,45 +80,45 @@
   </div>
   {{ verdict_legend() }}
   <p class="muted small">
-    A sample run is not comparable to a full run. Two results are comparable only when suite
-    version, dataset revision, scorer, judge and sampling parameters all match.
+    Sample runs are not comparable to full runs. Results are comparable only when suite version,
+    dataset revision, scorer, judge and sampling parameters all match.
   </p>
 </div>
 
-<h2>Axis by axis</h2>
-<p class="muted small">
-  Each chart ranks every model on one axis. Shaded bands are the pass, watch and fail zones from
-  the criteria; the bar takes the verdict colour and also states it in words. Whiskers are
-  confidence intervals where the metric has one. Hover a bar for its detail.
-</p>
-{% for family in families %}
-  {% set r = results[family] %}
-  <div class="card" id="axis-{{ family }}">
-    <h3 class="chart-title">
-      {{ labels[family] }}
-      {% if r.suite %}<a class="small" href="/suites/{{ r.suite.id }}">{{ r.suite.get('title', r.suite.id) }} →</a>{% endif %}
-    </h3>
-    {{ axis_chart(r.chart) }}
+{% set first = namespace(id=None) %}
+{% for family in families %}{% if results[family].has_runs and not first.id %}{% set first.id = family %}{% endif %}{% endfor %}
+<div data-tabs>
+  <div class="tab-list" role="tablist" aria-label="Axis detail">
+    {% for family in families %}
+      <button type="button" role="tab" id="tab-{{ family }}" aria-controls="axis-{{ family }}"
+              aria-selected="{{ 'true' if family == (first.id or families[0]) else 'false' }}">
+        {{ labels[family] }}{% if not results[family].has_runs %}<span class="tab-note">no runs</span>{% endif %}
+      </button>
+    {% endfor %}
   </div>
-{% endfor %}
-
-<h2>Where the differences are</h2>
-<p class="muted small">
-  The same results broken down one level: per language, per hazard, per bias probe, per outcome class.
-</p>
-{% for family in families %}
-  {% set r = results[family] %}
-  {% if r.has_runs and r.drill %}
-    <div class="card" id="detail-{{ family }}">
-      <h3 class="chart-title">
-        {{ {'capability': 'Language parity by language', 'safety': 'Violation rate by hazard',
-            'bias': 'Disparity by bias probe', 'grounding': 'Outcome distribution'}[family] }}
-        <a class="small" href="/suites/{{ r.suite.id }}">{{ r.suite.get('title', r.suite.id) }} →</a>
-      </h3>
-      {{ drill(r.drill) }}
-    </div>
-  {% endif %}
-{% endfor %}
+  {% for family in families %}
+    {% set r = results[family] %}
+    <section class="tab-pane" id="axis-{{ family }}" role="tabpanel" aria-labelledby="tab-{{ family }}">
+      <div class="card">
+        <h3 class="chart-title">
+          {{ headline[family][1] }} by model
+          {% if r.suite %}<a class="small" href="/suites/{{ r.suite.id }}">{{ r.suite.get('title', r.suite.id) }}: tests, basis, readiness →</a>{% endif %}
+        </h3>
+        {{ axis_chart(r.chart) }}
+        <p class="muted small">Shaded bands are the pass / watch / fail zones from the criteria; whiskers are confidence intervals where the metric has one. Hover for detail.</p>
+      </div>
+      {% if r.has_runs and r.drill %}
+        <div class="card">
+          <h3 class="chart-title">
+            {{ {'capability': 'Parity by language', 'safety': 'Violation rate by hazard',
+                'bias': 'Disparity by bias probe', 'grounding': 'Outcome distribution'}[family] }}
+          </h3>
+          {{ drill(r.drill) }}
+        </div>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
 
 {% endif %}
 {% endblock %}

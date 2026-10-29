@@ -1,6 +1,6 @@
 """The GUI panes: model comparison, the test-suite pages, and the methodology page.
 
-Navigation is a workflow (My models -> Run tests -> Compare models) followed by the
+Navigation is a workflow (Models Selected for Benchmarking -> Run tests -> Compare models) followed by the
 test harness: methodology, then one page per test suite. Each suite page carries its
 basis, the actual tests, the readiness checklist and the results, so there is nothing
 to cross-reference between panes.
