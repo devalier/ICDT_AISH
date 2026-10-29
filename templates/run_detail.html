@@ -113,7 +113,7 @@
         fixed seed{% if summary.get('bootstrap_capped_from') %}, capped from
         {{ summary.bootstrap_capped_from }} for interactive display{% endif %}).
         The dashed marks are the pass and fail thresholds. Basis:
-        <a href="/panes/bias">bias pane</a>.
+        <a href="/suites/euiba_bias">bias pane</a>.
       </p>
       {% for group in summary.groups %}
         {{ dotplot(group.probe_id, group.disparity, group.ci[0], group.ci[1],

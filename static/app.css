@@ -290,3 +290,107 @@ footer.page-foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid va
 .progress-svg { display: block; width: 100%; height: 10px; }
 .progress-svg .progress-track { fill: var(--surface-sunken); }
 .progress-svg .progress-fill { fill: var(--accent); }
+
+
+/* ------------------------------------------------------- sidebar workflow */
+
+.nav a .step {
+  display: inline-block; width: 18px; height: 18px; line-height: 18px; margin-right: 8px;
+  text-align: center; font-size: 11px; font-weight: 700; border-radius: 50%;
+  background: var(--surface-sunken); border: 1px solid var(--axis); color: var(--ink-2);
+}
+.nav a.active .step { background: var(--accent); border-color: var(--accent); color: #fff; }
+.nav-sublabel { font-size: 12px; font-weight: 600; color: var(--ink-2); padding: 10px 10px 2px; }
+.nav a.nav-sub { padding-left: 22px; }
+.nav a.nav-sub .nav-note { display: block; font-size: 11px; color: var(--ink-muted); font-weight: 400; }
+
+/* -------------------------------------------------------- status palette */
+
+:root {
+  --tint-pass: color-mix(in srgb, var(--good) 20%, var(--surface));
+  --tint-watch: color-mix(in srgb, var(--warning) 26%, var(--surface));
+  --tint-fail: color-mix(in srgb, var(--critical) 20%, var(--surface));
+  --tint-inconclusive: color-mix(in srgb, var(--serious) 22%, var(--surface));
+  --tint-none: var(--surface-sunken);
+  --seg-abstained-correctly: var(--accent);
+  --seg-unparseable: var(--ink-muted);
+}
+
+h3.chart-title { margin: 0 0 8px; font-size: 15px; display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+h3.chart-title a { font-weight: 400; }
+
+.sw-pass { background: var(--good); }
+.sw-watch { background: var(--warning); }
+.sw-fail { background: var(--critical); }
+.sw-inconclusive { background: var(--serious); }
+.sw-no_data { background: var(--surface-sunken); }
+.sw-grounded { background: var(--good); }
+.sw-abstained_correctly { background: var(--seg-abstained-correctly); }
+.sw-abstained_wrongly { background: var(--serious); }
+.sw-hallucinated { background: var(--critical); }
+.sw-unparseable { background: var(--seg-unparseable); }
+
+/* ---------------------------------------------------------- scorecard */
+
+.scorecard { border-collapse: separate; border-spacing: 4px; }
+.scorecard th, .scorecard td { border-bottom: none; }
+.scorecard td.sc { border-radius: 8px; min-width: 150px; }
+.sc-pass { background: var(--tint-pass); }
+.sc-watch { background: var(--tint-watch); }
+.sc-fail { background: var(--tint-fail); }
+.sc-inconclusive { background: var(--tint-inconclusive); }
+.sc-no_data, .sc-none { background: var(--tint-none); }
+.sc-value { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.sc-verdict { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* -------------------------------------------------------- axis charts */
+
+.axis-chart { width: 100%; height: auto; }
+.axis-chart .zone-pass { fill: var(--tint-pass); }
+.axis-chart .zone-watch { fill: var(--tint-watch); }
+.axis-chart .zone-fail { fill: var(--tint-fail); }
+.axis-chart .bar-pass { fill: var(--good); }
+.axis-chart .bar-watch { fill: var(--warning); }
+.axis-chart .bar-fail { fill: var(--critical); }
+.axis-chart .bar-inconclusive { fill: var(--serious); }
+.axis-chart .bar-no_data { fill: var(--ink-muted); }
+.axis-chart .bar { stroke: var(--surface); stroke-width: 1; }
+.axis-chart .whisker { stroke: var(--ink); stroke-width: 2; }
+.axis-chart .value-label.strong { fill: var(--ink); font-size: 13px; font-weight: 600; }
+.axis-chart .status-label { font-size: 12px; font-weight: 700; fill: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; }
+.axis-chart a text:hover { text-decoration: underline; }
+
+.stack-chart { width: 100%; max-width: 640px; height: auto; margin-bottom: 4px; }
+.seg-grounded { fill: var(--good); }
+.seg-abstained_correctly { fill: var(--seg-abstained-correctly); }
+.seg-abstained_wrongly { fill: var(--serious); }
+.seg-hallucinated { fill: var(--critical); }
+.seg-unparseable { fill: var(--seg-unparseable); }
+.seg-label { font-size: 11px; font-weight: 600; fill: #fff; }
+
+/* ------------------------------------------------------------ heatmaps */
+
+table.heat { border-collapse: separate; border-spacing: 3px; }
+table.heat th, table.heat td { border-bottom: none; padding: 6px 4px; }
+table.heat td:first-child { padding-right: 10px; min-width: 120px; }
+table.heat th.heat-col { height: 118px; padding: 0 2px; vertical-align: bottom; text-align: center; }
+table.heat th.heat-col span {
+  display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg);
+  white-space: nowrap; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--ink-2);
+}
+.heat-cell { border-radius: 6px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 44px; padding: 6px 3px; }
+.heat-cell .g { font-weight: 700; opacity: .8; }
+.heat-lead { font-weight: 600; }
+.heat-pass { background: var(--tint-pass); }
+.heat-watch { background: var(--tint-watch); }
+.heat-fail { background: var(--tint-fail); }
+.heat-inconclusive { background: var(--tint-inconclusive); }
+.heat-no_data { background: var(--tint-none); color: var(--ink-muted); }
+
+/* ----------------------------------------------------------- readiness */
+
+td.check { width: 28px; text-align: center; font-weight: 700; }
+.check-ok { color: var(--good); }
+.check-open { color: var(--ink-muted); }
+details summary { cursor: pointer; }
+details[open] > summary { margin-bottom: 6px; }

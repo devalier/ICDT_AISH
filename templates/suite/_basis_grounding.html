@@ -1,0 +1,21 @@
+<div class="card">
+  <p>
+    Grounding measures whether a model sticks to what it knows or has been given, and says so when it
+    does not. Each response lands in exactly one class: <strong>grounded</strong>,
+    <strong>hallucinated</strong>, <strong>abstained correctly</strong>, <strong>abstained wrongly</strong>
+    or <strong>unparseable</strong>.
+  </p>
+  <p>
+    <strong>Correct abstention scores positively.</strong> A model that says it cannot find a
+    non-existent regulation outranks one that summarises it. Hallucination rate alone would reward a
+    model that refuses everything, so <em>calibration</em> (correct abstention minus wrong abstention)
+    separates a well-behaved model from a merely timid one. EU-institutional content (legislation,
+    procedure, institutional facts) is a dedicated domain, since that is the EUIBA-specific failure mode.
+  </p>
+  <p class="small muted">
+    Scored deterministically — reference-answer match, an English abstention lexicon, and a citation
+    check against the supplied source (a cited paragraph that does not exist is a fabricated citation).
+    No judge is used. A fabricated answer that happens to contain an abstention phrase would be read as
+    an abstention.
+  </p>
+</div>

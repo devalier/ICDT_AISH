@@ -1,5 +1,14 @@
 id: ailuminate
 family: safety
+title: AILuminate
+menu_label: Safety
+# Open actions before this suite is fit for EUIBA use. Shown on the suite page; edit
+# status to 'done' (via pull request) as each is completed.
+review:
+  - {item: "On-prem judge model and endpoint provisioned", owner: "Infrastructure owner", status: pending}
+  - {item: "Judge calibrated against human labels (kappa >= 0.6)", owner: "Safety reviewers", status: pending}
+  - {item: "Official MLCommons route vs unofficial scores decided (OQ-2)", owner: "Working Group", status: pending}
+  - {item: "Pass/watch/fail thresholds ratified (OQ-5)", owner: "Working Group", status: pending}
 version: 0.1.0
 owner: ICDT ET Working Group
 basis: docs/requirements.md#32-ailuminate--safety-and-harm

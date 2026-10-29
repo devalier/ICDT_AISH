@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import verdict, hbar %}
+{% from "_macros.html" import verdict, axis_chart, drill, verdict_legend %}
 {% set active = 'dashboard' %}
-{% block title %}Model comparison{% endblock %}
+{% block title %}Compare models{% endblock %}
 {% block content %}
 
-<h1>Model comparison</h1>
+<h1>Compare models</h1>
 <p class="lede">
   Four axes, reported separately. A model can be strong on one and unacceptable on another,
-  so the harness does not average them into a single verdict. Every figure below links to the
-  run that produced it, and from there to the prompts and responses behind it.
+  so nothing here is averaged into a single verdict. Every figure links to the run behind it,
+  and from there to the prompts and responses.
 </p>
 
 {% if pack_problems %}
@@ -26,96 +26,106 @@
   <div class="card">
     <h2>No models configured</h2>
     <p>
-      Point the harness at a model before running anything. You supply the endpoint and your own
+      Start with step 1: point the harness at a model. You supply the endpoint and your own
       API key; the key is encrypted at rest and is never shown back to you or to anyone else.
     </p>
     <a class="button" href="/models">Add a model</a>
   </div>
+{% elif not has_runs %}
+  <div class="card">
+    <h2>No results yet</h2>
+    <p>You have {{ targets|length }} model{{ 's' if targets|length != 1 }}. Step 2: run a test suite against {{ 'it' if targets|length == 1 else 'them' }}.</p>
+    <a class="button" href="/runs">Run tests</a>
+  </div>
 {% else %}
 
 <div class="card">
+  <h2>Scorecard</h2>
+  <p class="muted small">
+    One row per model, one cell per axis. The number is the axis' headline metric; the colour,
+    symbol and word are its verdict against the thresholds in
+    <a href="/panes/scoring">packs/criteria.yaml</a>.
+  </p>
   <div class="table-scroll">
-    <table class="matrix">
+    <table class="scorecard">
       <thead>
         <tr>
-          <th>Model target</th>
+          <th>Model</th>
           {% for family in families %}
-            <th>{{ family|capitalize }}<div class="cell-meta">{{ headline[family][1] }}</div></th>
+            <th><a href="#axis-{{ family }}">{{ labels[family] }}</a><div class="cell-meta">{{ headline[family][1] }}</div></th>
           {% endfor %}
         </tr>
       </thead>
       <tbody>
-      {% for row in grid %}
+      {% for row in scorecard %}
         <tr>
           <td>
             <strong>{{ row.target.label }}</strong>
             <div class="cell-meta mono">{{ row.target.model_name }}</div>
-            <div class="cell-meta">{{ row.target.provider }}</div>
           </td>
           {% for cell in row.cells %}
-            <td class="cell">
-              {% if cell.run %}
-                <div class="cell-value">
-                  {% if cell.direction == 'lower' %}{{ cell.value|pct }}{% else %}{{ cell.value|num(2) }}{% endif %}
-                </div>
-                {{ verdict(cell.verdict) }}
+            {% if cell.has %}
+              <td class="sc sc-{{ cell.verdict }}">
+                <div class="sc-value">{{ cell.text }}</div>
+                <div class="sc-verdict">{{ cell.glyph }} {{ cell.verdict_label }}</div>
                 <div class="cell-meta">
-                  n={{ cell.n }}{% if cell.sample_mode %} · <span class="tag">sample</span>{% endif %}
+                  n={{ cell.n }}{% if cell.sample %} · <span class="tag">sample</span>{% endif %}
+                  · <a href="/runs/{{ cell.run_id }}">run</a>
                 </div>
-                <div class="cell-meta"><a href="/runs/{{ cell.run.id }}">View run</a></div>
-              {% else %}
-                <div class="cell-value muted">—</div>
-                <div class="cell-meta">Not run</div>
-              {% endif %}
-            </td>
+                {% if cell.overall != cell.verdict and cell.overall != 'no_data' %}
+                  <div class="cell-meta">worst metric: {{ cell.overall_label }}</div>
+                {% endif %}
+              </td>
+            {% else %}
+              <td class="sc sc-none"><div class="sc-value muted">—</div><div class="cell-meta">Not run</div></td>
+            {% endif %}
           {% endfor %}
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
+  {{ verdict_legend() }}
   <p class="muted small">
-    A sample run is not comparable to a full run and is labelled as such throughout.
-    Two results are comparable only when suite version, dataset revision, scorer, judge and
-    sampling parameters all match.
+    A sample run is not comparable to a full run. Two results are comparable only when suite
+    version, dataset revision, scorer, judge and sampling parameters all match.
   </p>
 </div>
 
+<h2>Axis by axis</h2>
+<p class="muted small">
+  Each chart ranks every model on one axis. Shaded bands are the pass, watch and fail zones from
+  the criteria; the bar takes the verdict colour and also states it in words. Whiskers are
+  confidence intervals where the metric has one. Hover a bar for its detail.
+</p>
 {% for family in families %}
-  {% set cells = [] %}
-  {% for row in grid %}
-    {% for cell in row.cells %}
-      {% if cell.family == family and cell.run %}
-        {% set _ = cells.append({'label': row.target.label, 'cell': cell}) %}
-      {% endif %}
-    {% endfor %}
-  {% endfor %}
-  {% if cells %}
-    <div class="card">
-      <h2>{{ family|capitalize }} — {{ headline[family][1] }}</h2>
-      <p class="muted small">
-        {% if headline[family][2] == 'lower' %}Lower is better.{% else %}Higher is better.{% endif %}
-        {% if thresholds.get(family) %}The dashed marks are the pass (amber) and watch (red)
-        thresholds from <a href="/panes/scoring">packs/criteria.yaml</a>.{% endif %}
-      </p>
-      {% set bands = thresholds.get(family, {}) %}
-      {% for entry in cells %}
-        {{ hbar(entry.label, entry.cell.value,
-                (entry.cell.value|pct if headline[family][2] == 'lower' else entry.cell.value|num(2)),
-                1.0, bands.get('watch'), bands.get('pass')) }}
-      {% endfor %}
+  {% set r = results[family] %}
+  <div class="card" id="axis-{{ family }}">
+    <h3 class="chart-title">
+      {{ labels[family] }}
+      {% if r.suite %}<a class="small" href="/suites/{{ r.suite.id }}">{{ r.suite.get('title', r.suite.id) }} →</a>{% endif %}
+    </h3>
+    {{ axis_chart(r.chart) }}
+  </div>
+{% endfor %}
+
+<h2>Where the differences are</h2>
+<p class="muted small">
+  The same results broken down one level: per language, per hazard, per bias probe, per outcome class.
+</p>
+{% for family in families %}
+  {% set r = results[family] %}
+  {% if r.has_runs and r.drill %}
+    <div class="card" id="detail-{{ family }}">
+      <h3 class="chart-title">
+        {{ {'capability': 'Language parity by language', 'safety': 'Violation rate by hazard',
+            'bias': 'Disparity by bias probe', 'grounding': 'Outcome distribution'}[family] }}
+        <a class="small" href="/suites/{{ r.suite.id }}">{{ r.suite.get('title', r.suite.id) }} →</a>
+      </h3>
+      {{ drill(r.drill) }}
     </div>
   {% endif %}
 {% endfor %}
-
-<div class="stat-row">
-  <div class="stat"><div class="k">Model targets</div><div class="v">{{ targets|length }}</div></div>
-  <div class="stat"><div class="k">Families</div><div class="v">4</div></div>
-  <div class="stat">
-    <div class="k">Test definitions</div>
-    <div class="v">{{ 'valid' if not pack_problems|selectattr('severity','equalto','error')|list else 'invalid' }}</div>
-  </div>
-</div>
 
 {% endif %}
 {% endblock %}

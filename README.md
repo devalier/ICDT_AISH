@@ -21,15 +21,15 @@ another, so the application does not average them into a single verdict.
 
 ## Panes
 
-| Pane | What it is for |
-|---|---|
-| **Model comparison** | Every target against every family, with the headline metric, verdict and sample size. One click to the run, one more to the prompts and responses |
-| **My models** | Add a model target — provider, endpoint, your own API key. Test the connection before spending a run on it |
-| **Runs** | Start a suite against a target, watch progress, read results |
-| **Language parity** | EU-MMLU across the 16 released languages, as a quantised heatmap with the numbers in the cells |
-| **Bias basis** | The legal grounding (Charter Art. 21/22, TFEU Art. 18, the Equal Treatment Directives, AI Act Arts. 10 and 15), the counterfactual method, the thresholds, and the method's stated limits — shown before any number |
-| **Scoring methodology** | Every metric definition, threshold, weight, lexicon and judge, rendered from the live files |
-| **Test suites** | The suite definitions as they stand on disk, with validation status and changelogs |
+The sidebar is a workflow followed by the test harness:
+
+| Section | Page | What it is for |
+|---|---|---|
+| **Workflow** | 1 · My models | Add a model target — provider, endpoint, your own API key. Test the connection before spending a run on it |
+| | 2 · Run tests | Start a suite against a target, watch progress, read results |
+| | 3 · Compare models | Scorecard (every model × every axis), one ranked chart per axis against the pass/watch/fail zones, and per-language / per-hazard / per-probe / per-outcome breakdowns. Every number links to the run and its prompts and responses |
+| **Test harness** | Methodology | Every metric definition, threshold, weight, lexicon and judge, rendered from the live files; how the Working Group edits the tests; validation status |
+| | Test suites → Language, Safety, Bias, Grounding | One page per suite: readiness checklist, basis, the actual tests, thresholds, results, changelog and the YAML as it stands on disk |
 
 ## Running it
 

@@ -16,16 +16,19 @@
       <span>ICDT ET Working Group</span>
     </div>
     <div class="nav">
-      <span class="nav-label">Evaluate</span>
-      <a href="/dashboard" {% if active == 'dashboard' %}class="active"{% endif %}>Model comparison</a>
-      <a href="/models" {% if active == 'models' %}class="active"{% endif %}>My models</a>
-      <a href="/runs" {% if active == 'runs' %}class="active"{% endif %}>Runs</a>
+      <span class="nav-label">Workflow</span>
+      <a href="/models" {% if active == 'models' %}class="active"{% endif %}><span class="step">1</span>My models</a>
+      <a href="/runs" {% if active == 'runs' %}class="active"{% endif %}><span class="step">2</span>Run tests</a>
+      <a href="/dashboard" {% if active == 'dashboard' %}class="active"{% endif %}><span class="step">3</span>Compare models</a>
 
-      <span class="nav-label">Basis</span>
-      <a href="/panes/parity" {% if active == 'parity' %}class="active"{% endif %}>Language parity</a>
-      <a href="/panes/bias" {% if active == 'bias' %}class="active"{% endif %}>Bias basis</a>
-      <a href="/panes/scoring" {% if active == 'scoring' %}class="active"{% endif %}>Scoring methodology</a>
-      <a href="/panes/suites" {% if active == 'suites' %}class="active"{% endif %}>Test suites</a>
+      <span class="nav-label">Test harness</span>
+      <a href="/panes/scoring" {% if active == 'scoring' %}class="active"{% endif %}>Methodology</a>
+      <span class="nav-sublabel">Test suites</span>
+      {% for s in nav_suites() %}
+        <a class="nav-sub{% if active == 'suite:' ~ s.id %} active{% endif %}" href="/suites/{{ s.id }}">
+          {{ s.label }}<span class="nav-note">{{ s.title }}</span>
+        </a>
+      {% endfor %}
     </div>
     <div class="sidebar-foot">
       {% if user %}

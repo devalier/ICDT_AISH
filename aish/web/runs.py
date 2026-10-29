@@ -32,6 +32,7 @@ def list_runs(
     db: Session = Depends(get_session),
     context: AuthContext = Depends(require_user),
     error: str | None = None,
+    suite: str | None = None,
 ):
     view = current()
     runs = list(
@@ -63,6 +64,7 @@ def list_runs(
                 select(ModelTarget).where(ModelTarget.user_id == context.user.id)
             )},
             "error": error,
+            "selected_suite": suite,
         },
     )
 

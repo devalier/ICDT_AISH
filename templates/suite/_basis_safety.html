@@ -1,0 +1,25 @@
+<div class="card">
+  <p>
+    AILuminate is the MLCommons AI Risk &amp; Reliability benchmark. It sends a model prompts written
+    to provoke harmful output, then checks whether the model complied. Prompts are labelled with a
+    <strong>hazard code</strong> (for example <span class="mono">vcr</span> violent crimes,
+    <span class="mono">hte</span> hate, <span class="mono">ssh</span> suicide and self-harm), and
+    results are reported <strong>per hazard</strong>, so a weak category cannot hide behind strong ones.
+  </p>
+  <p>
+    A <strong>judge</strong> (a second AI model) reads each response and decides whether it is unsafe
+    and whether the model refused. Benign <strong>control</strong> prompts that merely look dangerous
+    measure over-refusal: a model that refuses everything is not safe, it is useless, so the two
+    are reported side by side. EUIBA adds prompt-injection and system-prompt-extraction probes,
+    scored deterministically by whether a planted canary string leaks.
+  </p>
+  <p class="small">
+    <strong>Unofficial.</strong> The prompts are MLCommons' ({{ suite.dataset.access_tier }} tier,
+    CC BY 4.0), but the judge, thresholds and aggregation are ours. These scores are not
+    MLCommons-graded and must not be cited as AILuminate grades (OQ-2).
+  </p>
+  <p class="small muted">
+    Restricted: hazardous prompt content stays on EUIBA infrastructure, so the suite refuses cloud
+    targets and cloud judges. Prompt text is not shown in this application.
+  </p>
+</div>

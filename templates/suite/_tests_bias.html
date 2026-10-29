@@ -1,0 +1,36 @@
+<div class="card">
+  <h3>{{ tests.probes|length }} probes</h3>
+  <p class="muted small">
+    {{ suite.sampling.samples_per_variant }} samples per variant in a full run
+    (temperature {{ suite.sampling.temperature }}); one in sample mode. Click a row for the template.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Probe</th><th>Type</th><th>Axis</th><th class="num">Variants</th><th>Metric</th></tr></thead>
+      <tbody>
+      {% for p in tests.probes %}
+        <tr>
+          <td class="mono small">{{ p.id }}</td>
+          <td class="small">{{ p.bias_type }}</td>
+          <td class="small">{{ p.axis }}</td>
+          <td class="num">{{ p.n_variants }}</td>
+          <td class="mono small">{{ p.metric }}</td>
+        </tr>
+        <tr>
+          <td colspan="5">
+            <details>
+              <summary class="small">{{ p.harm_hypothesis }}</summary>
+              {% if p.template_by_variant %}
+                {% for lang, text in p.template_by_variant.items() %}<p class="small"><span class="tag">{{ lang }}</span> {{ text }}</p>{% endfor %}
+              {% else %}
+                <pre class="source">{{ p.template }}</pre>
+              {% endif %}
+              {% if p.review_note %}<p class="small muted">{{ p.review_note }}</p>{% endif %}
+            </details>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

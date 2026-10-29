@@ -1,5 +1,14 @@
 id: euiba_bias
 family: bias
+title: EUIBA Bias
+menu_label: Bias
+# Open actions before this suite is fit for EUIBA use. Shown on the suite page; edit
+# status to 'done' (via pull request) as each is completed.
+review:
+  - {item: "Probe scenarios and wording approved", owner: "Working Group", status: pending}
+  - {item: "Translations reviewed by native speakers (16 languages)", owner: "Language reviewers", status: pending}
+  - {item: "Held-out probe set authored and stored privately", owner: "Working Group", status: pending}
+  - {item: "Pass/watch/fail thresholds ratified (OQ-5)", owner: "Working Group", status: pending}
 version: 0.2.0
 owner: ICDT ET Working Group
 basis: docs/bias-methodology.md
