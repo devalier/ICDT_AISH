@@ -1,0 +1,78 @@
+<div class="card">
+  <h3>Why a EUIBA-specific suite</h3>
+  <p>
+    Public safety benchmarks are largely US-origin. They cover race, gender, religion and sexuality,
+    and they cover them in English. They do not cover the two axes that matter most in an EU
+    institutional setting:
+  </p>
+  <ul>
+    <li><strong>Nationality across Member States</strong> — differential treatment of a Polish, Greek,
+      Portuguese or Irish subject in the same scenario.</li>
+    <li><strong>Language of the user</strong> — whether the quality, caution or helpfulness of an answer
+      degrades when the same request is made in a smaller-service language.</li>
+  </ul>
+  <p>
+    EU-MMLU measures whether a model <em>knows</em> the answer in each language. This suite measures
+    whether it <em>treats the user</em> the same in each.
+  </p>
+</div>
+
+<div class="card">
+  <h3>Legal and normative basis</h3>
+  <p class="muted small">From <span class="mono">packs/attributes.yaml</span>. Each protected attribute carries the instrument it rests on.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Attribute</th><th>Basis</th><th class="num">Variants</th><th>EU-specific</th></tr></thead>
+      <tbody>
+      {% for attribute in attributes %}
+        <tr>
+          <td><strong>{{ attribute.label }}</strong><div class="cell-meta mono">{{ attribute.id }}</div></td>
+          <td class="small">{{ attribute.basis|join('; ') }}</td>
+          <td class="num">{{ attribute.variants|length }}</td>
+          <td>{% if attribute.eu_specific %}<span class="tag">yes</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted small">
+    The EU AI Act (Arts. 10 and 15) obliges a high-risk system to be tested for bias and to have that
+    testing documented; the attributes above are what the testing is against.
+  </p>
+</div>
+
+<div class="card">
+  <h3>Method: matched counterfactual groups</h3>
+  <p>
+    Every test is a template plus a substitution set. The harness expands one template into a matched
+    group — items identical in every respect except the attribute under test — and measures
+    <strong>the spread across the group</strong>, never the absolute value of any one variant.
+  </p>
+  <p>
+    A model that recommends every candidate 90% of the time is not biased. A model that recommends 91%
+    for one nationality and 62% for another is, regardless of the average.
+  </p>
+  <ul>
+    <li>One axis per group; names are held constant so name-proxy effects stay separable.</li>
+    <li>All variants must be equally plausible in the scenario, or the test measures world knowledge.</li>
+    <li>Variant order is randomised under a recorded seed; full runs sample at temperature 0.7 so replicates are independent.</li>
+    <li><strong>Allocative</strong> (decides or advises): favourable-rate disparity.
+      <strong>Representational</strong> (describes): stereotype terms, hedging, refusal disparity.
+      <strong>Quality of service</strong> (same request, different language): information content, length.</li>
+    <li>The spread across many variants is positive even for a fair model, so a permutation test
+      decides whether it is distinguishable from chance. Past a threshold but not distinguishable
+      reads <strong>inconclusive</strong>.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Known limits of this method</h3>
+  <ul>
+    <li>Counterfactual templates test what they encode. A clean pass means "no disparity on the tested
+      axes in the tested scenarios", never "unbiased".</li>
+    <li>Published templates can be trained against; the suite keeps a held-out set versioned but not published.</li>
+    <li>Parity in a single-turn prompt does not imply parity in a multi-turn or tool-using deployment.</li>
+    <li>Translated templates carry translation artefacts. A language-axis finding must be reviewed by a
+      native speaker before it is attributed to the model rather than to prompt asymmetry.</li>
+  </ul>
+</div>

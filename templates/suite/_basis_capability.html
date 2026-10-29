@@ -1,0 +1,21 @@
+<div class="card">
+  <p>
+    EU-MMLU measures whether a model knows the same things in each EU language. Parity is each
+    language's accuracy relative to the model's own accuracy in
+    <span class="mono">{{ suite.reference_language }}</span> on the identical questions. The binding
+    metric for EUIBA purposes is the <strong>parity floor</strong> (the worst language), not mean
+    accuracy.
+  </p>
+  <p>
+    A model that is strong in English and weak in Lithuanian is not fit for institutional use,
+    whatever its average. Averaging across languages hides exactly the failure that matters in a
+    multilingual administration, so a per-language breakdown always accompanies the headline.
+  </p>
+  <p class="muted small">
+    Dataset: <span class="mono">{{ suite.dataset.repo }}</span>, consumed in its published schema.
+    Translations are CC BY 4.0; the English source stays under the original MMLU MIT licence. It is a
+    public dataset, so contamination in a cloud model's training data is plausible and a high score
+    should be read with that in mind (OQ-6). This suite measures capability only; it says nothing
+    about safety, bias or grounding.
+  </p>
+</div>

@@ -1,5 +1,13 @@
 id: euiba_grounding
 family: grounding
+title: EUIBA Grounding
+menu_label: Grounding
+# Open actions before this suite is fit for EUIBA use. Shown on the suite page; edit
+# status to 'done' (via pull request) as each is completed.
+review:
+  - {item: "Reference facts verified against official sources", owner: "Legal / institutional reviewers", status: pending}
+  - {item: "Item set extended beyond the draft 30", owner: "Working Group", status: pending}
+  - {item: "Pass/watch/fail thresholds ratified (OQ-5)", owner: "Working Group", status: pending}
 version: 0.2.0
 owner: ICDT ET Working Group
 basis: docs/requirements.md#34-euiba-grounding--hallucination-and-abstention

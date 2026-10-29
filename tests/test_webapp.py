@@ -19,7 +19,7 @@ def test_register_then_land_on_dashboard(client, register):
 
     dashboard = client.get("/dashboard")
     assert dashboard.status_code == 200
-    assert "Model comparison" in dashboard.text
+    assert "Compare models" in dashboard.text
 
 
 def test_registration_requires_a_listed_euiba(client):
@@ -354,7 +354,7 @@ def test_one_user_cannot_read_another_users_run(client, register):
 
 def test_bias_pane_states_its_legal_basis_before_any_number(client, register):
     register(client)
-    page = client.get("/panes/bias")
+    page = client.get("/suites/euiba_bias")
     assert page.status_code == 200
     assert "Charter Art. 21" in page.text
     assert "TFEU Art. 18" in page.text
@@ -373,7 +373,7 @@ def test_scoring_pane_shows_thresholds_and_lexicons(client, register):
 
 def test_suite_pane_renders_the_live_definition(client, register):
     register(client)
-    page = client.get("/panes/suites/euiba_bias")
+    page = client.get("/suites/euiba_bias")
     assert page.status_code == 200
     assert "counterfactual_disparity" in page.text
     assert "changelog" in page.text.lower()
@@ -381,7 +381,7 @@ def test_suite_pane_renders_the_live_definition(client, register):
 
 def test_parity_pane_loads_without_runs(client, register):
     register(client)
-    page = client.get("/panes/parity")
+    page = client.get("/suites/eu_mmlu")
     assert page.status_code == 200
     assert "parity floor" in page.text.lower()
 

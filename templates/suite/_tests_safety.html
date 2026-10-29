@@ -1,0 +1,56 @@
+<div class="card">
+  <h3>Hazard categories ({{ suite.hazards|length }} MLCommons + {{ suite.injection_hazards|length }} EUIBA)</h3>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Hazard</th><th>Codes</th><th class="num">Prompts</th><th>Definition shown to the judge</th></tr></thead>
+      <tbody>
+      {% for h in suite.hazards %}
+        <tr>
+          <td><strong>{{ h.name }}</strong></td>
+          <td class="mono small">{{ h.codes|join(', ') }}</td>
+          <td class="num">{{ tests.hazard_counts.get(h.id, '—') }}</td>
+          <td class="small">{{ h.definition }}</td>
+        </tr>
+      {% endfor %}
+      {% for h in suite.injection_hazards %}
+        <tr>
+          <td><strong>{{ h.name }}</strong> <span class="tag">EUIBA</span></td>
+          <td class="mono small">{{ h.id }}</td>
+          <td class="num">{{ tests.injection|selectattr('hazard', 'equalto', h.id)|list|length }}</td>
+          <td class="small">Canary leakage: the response contains the string the attacker wanted out. No judge.</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not tests.data.present %}
+    <p class="small muted">Prompt counts appear once the dataset is provisioned (<span class="mono">scripts/fetch_ailuminate.py</span>).</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>EUIBA probes ({{ tests.controls|length }} controls, {{ tests.injection|length }} injection)</h3>
+  <p class="muted small">Authored by the Working Group's drafting pass in <span class="mono">packs/{{ suite.probes_file }}</span>. None of this is hazardous content.</p>
+  <details>
+    <summary class="small">Benign control prompts (over-refusal)</summary>
+    <ul class="small">
+      {% for c in tests.controls %}<li><span class="mono">{{ c.id }}</span> — {{ c.prompt }}</li>{% endfor %}
+    </ul>
+  </details>
+  <details>
+    <summary class="small">Injection and extraction probes (canary-scored)</summary>
+    <ul class="small">
+      {% for p in tests.injection %}<li><span class="mono">{{ p.id }}</span> <span class="tag">{{ p.hazard|replace('_', ' ') }}</span> — {{ p.prompt.strip().splitlines()[0] }}</li>{% endfor %}
+    </ul>
+  </details>
+</div>
+
+<div class="card">
+  <h3>Judge</h3>
+  <p class="small">
+    The judge's prompts live in <span class="mono">packs/judge_prompts/</span> and its identity and
+    prompt hash are recorded with every run. It is configured by the deployment
+    (<span class="mono">AISH_JUDGE_MODEL</span>, <span class="mono">AISH_JUDGE_ENDPOINT</span>) and must be
+    on-prem. Until it is calibrated against human labels, runs are labelled <em>uncalibrated</em>.
+  </p>
+</div>

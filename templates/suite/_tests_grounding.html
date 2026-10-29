@@ -1,0 +1,32 @@
+<div class="card">
+  <h3>{{ tests['items']|length }} items</h3>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Item</th><th>Domain</th><th>Type</th><th>Expected</th><th>Source</th></tr></thead>
+      <tbody>
+      {% for item in tests['items'] %}
+        <tr>
+          <td class="mono small">{{ item.id }}</td>
+          <td class="small">{{ item.domain }}</td>
+          <td class="small">{{ item.item_type|replace('_', ' ') }}</td>
+          <td class="small">{{ item.expected|replace('_', ' ') }}</td>
+          <td class="mono small">{{ item.source or '—' }}</td>
+        </tr>
+        <tr>
+          <td colspan="5">
+            <details>
+              <summary class="small">{{ item.prompt.strip().splitlines()[0] }}</summary>
+              <pre class="source">{{ item.prompt }}</pre>
+              {% if item.reference_answers or item.reference_answer %}
+                <p class="small muted">Accepted answers: {{ (item.reference_answers or [item.reference_answer])|join(' · ') }}</p>
+              {% endif %}
+              {% if item.note %}<p class="small muted">{{ item.note }}</p>{% endif %}
+            </details>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small muted">The 30 draft items were authored by an AI assistant and need Working Group fact-checking before a scored run.</p>
+</div>

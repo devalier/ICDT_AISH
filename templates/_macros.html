@@ -54,3 +54,127 @@
             cx="{{ (value|bar(maximum, 360))|round(1) }}" cy="28" r="6"></circle>
   </svg>
 {% endmacro %}
+
+{#- ------------------------------------------------------------------------ #}
+{#  Comparison charts. Geometry is computed in aish/web/panes.py and arrives as   #}
+{#  plain numbers; every colour is a class, so the CSP needs no inline styles.    #}
+{#- ------------------------------------------------------------------------ #}
+
+{% macro verdict_legend() %}
+  <ul class="legend">
+    <li><span class="swatch sw-pass"></span>✓ Pass</li>
+    <li><span class="swatch sw-watch"></span>! Watch</li>
+    <li><span class="swatch sw-fail"></span>✕ Fail</li>
+    <li><span class="swatch sw-inconclusive"></span>? Inconclusive (cannot be told from noise)</li>
+    <li><span class="swatch sw-no_data"></span>– No data</li>
+  </ul>
+{% endmacro %}
+
+{% macro axis_chart(c) %}
+  {% if c.empty %}
+    <p class="muted">No {{ c.title|lower }} runs yet.</p>
+  {% else %}
+  {% set body_h = c.rows|length * c.row_h %}
+  <svg class="chart axis-chart" viewBox="0 0 {{ c.w }} {{ c.h }}" role="img"
+       aria-label="{{ c.title }}: {{ c.metric }} by model">
+    <title>{{ c.title }}: {{ c.metric }} by model</title>
+    {% for z in c.zones %}
+      <rect class="zone zone-{{ z.cls }}" x="{{ z.x }}" y="{{ c.top - 6 }}" width="{{ z.w }}" height="{{ body_h + 6 }}"></rect>
+    {% endfor %}
+    {% for t in c.ticks %}
+      <line class="gridline" x1="{{ t.x }}" y1="{{ c.top - 6 }}" x2="{{ t.x }}" y2="{{ c.top + body_h }}"></line>
+      <text class="axis-label" x="{{ t.x }}" y="{{ c.top + body_h + 16 }}" text-anchor="middle">{{ t.label }}</text>
+    {% endfor %}
+    <text class="axis-label" x="{{ c.plot_x }}" y="12">{{ c.metric }} — {{ 'lower is better' if c.direction == 'lower' else 'higher is better' }}</text>
+    {% for r in c.rows %}
+      {% if r.run_id %}<a href="/runs/{{ r.run_id }}">{% endif %}
+      <text class="series-label" x="0" y="{{ r.mid - 2 }}">{{ r.label }}</text>
+      {% if r.run_id %}</a>{% endif %}
+      <text class="axis-label" x="0" y="{{ r.mid + 12 }}">{{ r.sub }}{% if r.has and r.sample %} · sample{% endif %}</text>
+      {% if r.has %}
+        <g>
+          <title>{{ r.title }}</title>
+          <rect class="bar bar-{{ r.verdict }}" x="{{ c.plot_x }}" y="{{ r.mid - 7 }}" width="{{ r.w }}" height="14" rx="4"></rect>
+          {% if r.ci %}
+            <line class="whisker" x1="{{ r.ci[0] }}" y1="{{ r.mid }}" x2="{{ r.ci[1] }}" y2="{{ r.mid }}"></line>
+          {% endif %}
+          <text class="value-label strong" x="{{ c.value_x }}" y="{{ r.mid + 4 }}">{{ r.value_text }}</text>
+          <text class="status-label status-{{ r.verdict }}" x="{{ c.value_x + 62 }}" y="{{ r.mid + 4 }}">{{ r.glyph }} {{ r.verdict_label }}</text>
+        </g>
+      {% else %}
+        <text class="axis-label" x="{{ c.plot_x }}" y="{{ r.mid + 4 }}">Not run</text>
+      {% endif %}
+    {% endfor %}
+  </svg>
+  {% endif %}
+{% endmacro %}
+
+{% macro heatmap(h) %}
+  {% if not h.rows %}
+    <p class="muted">No runs to show yet.</p>
+  {% else %}
+  <div class="table-scroll">
+    <table class="heat">
+      <thead>
+        <tr>
+          <th>Model</th>
+          {% for head in h.lead_heads %}<th class="num">{{ head }}</th>{% endfor %}
+          {% for col in h.cols %}<th class="heat-col" title="{{ col.title }}"><span>{{ col.label }}</span></th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in h.rows %}
+        <tr>
+          <td>
+            <a href="/runs/{{ row.run_id }}"><strong>{{ row.label }}</strong></a>
+            <div class="cell-meta">n={{ row.n }}{% if row.sample %} · <span class="tag">sample</span>{% endif %}{% if row.unofficial %} · <span class="tag">unofficial</span>{% endif %}</div>
+          </td>
+          {% for lead in row.leads %}
+            <td class="heat-cell heat-lead heat-{{ lead.verdict }}" title="{{ lead.head }}: {{ lead.text }}">
+              <span class="g">{{ lead.glyph }}</span> {{ lead.text }}
+            </td>
+          {% endfor %}
+          {% for cell in row.cells %}
+            <td class="heat-cell heat-{{ cell.verdict }}" title="{{ cell.title }}">
+              <span class="g">{{ cell.glyph }}</span>{% if cell.has %} {{ cell.text }}{% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ verdict_legend() }}
+  <p class="muted small">{{ h.note }}</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro stack(h) %}
+  {% if not h.rows %}
+    <p class="muted">No runs to show yet.</p>
+  {% else %}
+    {% for row in h.rows %}
+      <svg class="chart stack-chart" viewBox="0 0 {{ 200 + h.plot_w }} 38" role="img"
+           aria-label="{{ row.label }} outcome distribution">
+        <title>{{ row.label }} outcome distribution</title>
+        <a href="/runs/{{ row.run_id }}"><text class="series-label" x="0" y="15">{{ row.label }}</text></a>
+        <text class="axis-label" x="0" y="30">n={{ row.n }}{% if row.sample %} · sample{% endif %}</text>
+        {% for seg in row.segments %}
+          <g>
+            <title>{{ seg.title }}</title>
+            <rect class="seg seg-{{ seg.key }}" x="{{ 200 + seg.x }}" y="6" width="{{ seg.w }}" height="24" rx="3"></rect>
+            {% if seg.text %}<text class="seg-label" x="{{ 200 + seg.mid }}" y="22" text-anchor="middle">{{ seg.text }}</text>{% endif %}
+          </g>
+        {% endfor %}
+      </svg>
+    {% endfor %}
+    <ul class="legend">
+      {% for item in h.legend %}<li><span class="swatch sw-{{ item.key }}"></span>{{ item.label }}</li>{% endfor %}
+    </ul>
+    <p class="muted small">{{ h.note }}</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro drill(h) %}
+  {% if h.kind == 'stack' %}{{ stack(h) }}{% else %}{{ heatmap(h) }}{% endif %}
+{% endmacro %}

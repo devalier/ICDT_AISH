@@ -110,7 +110,7 @@ def test_a_run_reaches_the_dashboard_and_the_panes(signed_in, monkeypatch):
     assert "Stub target" in dashboard.text
     assert "Not run" not in dashboard.text.split("Bias")[1][:200] or True
 
-    bias = signed_in.get("/panes/bias")
+    bias = signed_in.get("/suites/euiba_bias")
     assert bias.status_code == 200
     assert "Stub target" in bias.text
 

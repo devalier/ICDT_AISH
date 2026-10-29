@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% from "_macros.html" import verdict, axis_chart, drill %}
+{% set active = 'suite:' ~ suite.id %}
+{% block title %}{{ suite.get('title', suite.id) }}{% endblock %}
+{% block content %}
+
+<h1>{{ family_label }} <span class="muted">· {{ suite.get('title', suite.id) }}</span></h1>
+<p class="lede">{{ suite.description }}</p>
+<ul class="pill-row">
+  <li>v{{ suite.version }}</li>
+  <li class="mono">{{ suite.id }}</li>
+  <li class="mono">{{ suite.scorer }}</li>
+  <li class="mono">{{ suite.criteria }}</li>
+  <li>{{ suite.owner }}</li>
+  {% if suite.restricted %}<li>restricted</li>{% endif %}
+</ul>
+<p>
+  <a class="button" href="/runs?suite={{ suite.id }}">Run this suite</a>
+  <a class="button secondary" href="/dashboard#axis-{{ family }}">See it in the comparison</a>
+</p>
+
+{% if problems %}
+  <div class="error-box">
+    <strong>Validation</strong>
+    {% for problem in problems %}<div class="mono small">{{ problem }}</div>{% endfor %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2>Readiness for EUIBA use</h2>
+  <p class="muted small">
+    The first rows are checked live against this server. The rest are open actions recorded in the
+    suite file (<span class="mono">review:</span>) for the Working Group to close by pull request.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th></th><th>Item</th><th>Status / owner</th></tr></thead>
+      <tbody>
+      {% for check in readiness %}
+        <tr>
+          <td class="check {{ 'check-ok' if check.ok else 'check-open' }}">{{ '✓' if check.ok else '○' }}</td>
+          <td>{{ check.item }}{% if check.manual %} <span class="tag">manual</span>{% endif %}</td>
+          <td class="small muted">{{ check.detail }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2>1 · Basis</h2>
+{% include "suite/_basis_" ~ family ~ ".html" %}
+
+<h2>2 · The tests</h2>
+{% include "suite/_tests_" ~ family ~ ".html" %}
+
+<div class="card">
+  <h3>Thresholds in force</h3>
+  <p class="muted small">
+    From <span class="mono">packs/criteria.yaml</span> → <span class="mono">{{ suite.criteria }}</span>.
+    Placeholders pending Working Group ratification (OQ-5).
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Metric</th><th class="num">Pass</th><th class="num">Watch</th><th>Direction</th></tr></thead>
+      <tbody>
+      {% for metric, bands in criteria.get('metrics', {}).items() %}
+        <tr>
+          <td class="mono">{{ metric }}</td>
+          <td class="num">{{ bands.get('pass')|num(2) }}</td>
+          <td class="num">{{ bands.get('watch')|num(2) }}</td>
+          <td class="small">{{ 'lower is better' if bands.get('direction') == 'lower_is_better' else 'higher is better' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if criteria.get('confidence') %}
+    <p class="small">
+      Intervals: {{ criteria.confidence.method }}, {{ criteria.confidence.resamples }} resamples at
+      {{ criteria.confidence.level }}. A value past a threshold that cannot be told from chance is
+      reported <strong>inconclusive</strong>, not as a verdict.
+    </p>
+  {% endif %}
+  {% if criteria.get('rationale') %}<p class="small muted">{{ criteria.rationale }}</p>{% endif %}
+</div>
+
+<h2>3 · Results</h2>
+{% if results and results.has_runs %}
+  <div class="card">
+    <h3 class="chart-title">{{ headline[1] }} by model</h3>
+    {{ axis_chart(results.chart) }}
+  </div>
+  <div class="card">
+    <h3 class="chart-title">Breakdown</h3>
+    {{ drill(results.drill) }}
+  </div>
+{% else %}
+  <div class="card">
+    <p class="muted">No {{ family_label|lower }} runs yet.</p>
+    <a class="button" href="/runs?suite={{ suite.id }}">Run this suite</a>
+  </div>
+{% endif %}
+
+<h2>Provenance</h2>
+<div class="card">
+  <h3>Changelog</h3>
+  {% for entry in suite.changelog %}
+    <p class="small">
+      <strong>v{{ entry.version }}</strong> · {{ entry.date }} · {{ entry.author }}<br>
+      {{ entry.change }}
+    </p>
+  {% endfor %}
+  <details>
+    <summary class="small">Definition as it stands on disk (<span class="mono">packs/{{ suite._path }}</span>)</summary>
+    <pre class="source">{{ yaml_source }}</pre>
+  </details>
+</div>
+{% endblock %}

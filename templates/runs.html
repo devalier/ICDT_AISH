@@ -21,7 +21,7 @@
         <label for="suite_id">Suite</label>
         <select id="suite_id" name="suite_id" required>
           {% for suite in suites %}
-            <option value="{{ suite.id }}">{{ suite.id }} — {{ suite.family }} (v{{ suite.version }})</option>
+            <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (v{{ suite.version }})</option>
           {% endfor %}
         </select>
       </div>

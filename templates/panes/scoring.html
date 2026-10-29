@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import verdict %}
 {% set active = 'scoring' %}
-{% block title %}Scoring methodology{% endblock %}
+{% block title %}Methodology{% endblock %}
 {% block content %}
 
-<h1>Scoring methodology</h1>
+<h1>Methodology</h1>
 <p class="lede">
   Every number this application reports is defined here, and every parameter behind it is on
   this page. Nothing is hard-coded: thresholds, weights and lexicons all come from
@@ -186,6 +186,55 @@
           <td class="mono small">{{ suite.scorer }}</td>
           <td class="mono small">{{ suite.criteria }}</td>
           <td class="mono small">{{ suite.version }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2>Ownership and governance</h2>
+
+<div class="card">
+  <h3>How the Working Group edits the tests</h3>
+  <p class="muted small">Every test, probe, threshold and pass/fail criterion lives in <span class="mono">packs/</span> as YAML under version control. Nothing there is code.</p>
+  <ol>
+    <li>Change the YAML in <span class="mono">packs/</span>.</li>
+    <li>Run <span class="mono">python3 -m harness validate</span> — it names the file, the path inside it and what is wrong.</li>
+    <li>Bump the suite version (major if comparability of scores changes) and add a changelog entry.</li>
+    <li>Open a pull request. Working Group review is the approval gate.</li>
+  </ol>
+  <p class="small">The test suites themselves, with their basis, tests, readiness and results, are under <strong>Test suites</strong> in the sidebar.</p>
+</div>
+
+{% set errors = problems | selectattr('severity', 'equalto', 'error') | list %}
+{% set warnings = problems | rejectattr('severity', 'equalto', 'error') | list %}
+{% if errors %}
+  <div class="error-box">
+    <strong>Validation errors — these suites will not run</strong>
+    {% for problem in errors %}<div class="mono small">{{ problem }}</div>{% endfor %}
+  </div>
+{% endif %}
+{% if warnings %}
+  <div class="notice">
+    <strong>Warnings — runnable, but not fit for a scored run</strong>
+    {% for problem in warnings %}<div class="mono small">{{ problem }}</div>{% endfor %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <h3>Reference fleet</h3>
+  <p class="muted small">From <span class="mono">packs/models.yaml</span>. Your own targets are under <a href="/models">My models</a>.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Model</th><th>Vendor</th><th>Deployment</th><th>Egress class</th></tr></thead>
+      <tbody>
+      {% for model in fleet %}
+        <tr>
+          <td><strong>{{ model.name }}</strong><div class="cell-meta mono">{{ model.id }}</div></td>
+          <td class="small">{{ model.vendor }}</td>
+          <td><span class="tag">{{ model.deployment }}</span></td>
+          <td class="small">{{ model.egress_class }}</td>
         </tr>
       {% endfor %}
       </tbody>

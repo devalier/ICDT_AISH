@@ -1,0 +1,18 @@
+<div class="card">
+  <h3>What is run</h3>
+  <ul>
+    <li><strong>Languages ({{ suite.languages|length }}):</strong>
+      {% for lang in suite.languages %}<span class="tag">{{ lang }}</span> {% endfor %}
+      Parity is measured against <span class="mono">{{ suite.reference_language }}</span>.</li>
+    <li><strong>Subjects:</strong> enumerated from the data (the announcement says seven, the dataset
+      card eight; the data is the authority, OQ-1).
+      {% if tests.subjects %}Reference list: {% for s in tests.subjects %}<span class="mono">{{ s }}</span>{{ ', ' if not loop.last }}{% endfor %}.{% endif %}</li>
+    <li><strong>Items:</strong> multiple choice, four options, one run per question per language.
+      Sample mode: {{ suite.sampling_mode.items_per_stratum }} questions per subject, the
+      <em>same</em> questions in every language.</li>
+    <li><strong>Scoring:</strong> deterministic answer extraction (letter, then index, then restated
+      choice). Unparseable responses are reported, never counted as wrong.</li>
+  </ul>
+  <h3>Prompt template</h3>
+  <pre class="source">{{ suite.prompt.template }}</pre>
+</div>

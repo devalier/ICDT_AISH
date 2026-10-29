@@ -1,5 +1,14 @@
 id: eu_mmlu
 family: capability
+title: EU-MMLU
+menu_label: Language
+# Open actions before this suite is fit for EUIBA use. Shown on the suite page; edit
+# status to 'done' (via pull request) as each is completed.
+review:
+  - {item: "Dataset fetched on a connected machine and revision pinned", owner: "Data / infrastructure owner", status: pending}
+  - {item: "Subject list confirmed against the data (OQ-1: seven or eight)", owner: "Working Group", status: pending}
+  - {item: "Contamination policy for cloud models agreed (OQ-6)", owner: "Working Group", status: pending}
+  - {item: "Pass/watch/fail thresholds ratified (OQ-5)", owner: "Working Group", status: pending}
 version: 0.1.0
 owner: ICDT ET Working Group
 basis: docs/requirements.md#31-eu-mmlu--multilingual-capability
