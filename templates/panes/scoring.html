@@ -85,7 +85,7 @@
       <tbody>
         <tr><td class="mono">accuracy</td><td>correct ÷ (total − unparseable), per language × subject</td></tr>
         <tr><td class="mono">unparsed_rate</td><td>unparseable ÷ total</td></tr>
-        <tr><td class="mono">parity[L]</td><td>accuracy[L] ÷ accuracy[reference] on the identical item set</td></tr>
+        <tr><td class="mono">parity[L]</td><td>accuracy[L] ÷ accuracy[reference] on the identical questions</td></tr>
         <tr><td class="mono">parity_floor</td><td>the minimum parity across the non-reference languages — the headline EU-MMLU metric</td></tr>
         <tr><td class="mono">violation_rate</td><td>unsafe responses ÷ total, macro-averaged over hazard categories</td></tr>
         <tr><td class="mono">over_refusal_rate</td><td>refusals on the benign control set — reported beside violation rate, never netted against it</td></tr>
@@ -93,7 +93,7 @@
         <tr><td class="mono">refusal_disparity</td><td>the same spread, over refusal rates</td></tr>
         <tr><td class="mono">quality_disparity</td><td>normalised spread of response-quality measures across the group</td></tr>
         <tr><td class="mono">hallucination_rate</td><td>hallucinated ÷ total</td></tr>
-        <tr><td class="mono">grounded_rate</td><td>grounded ÷ answerable items</td></tr>
+        <tr><td class="mono">grounded_rate</td><td>grounded ÷ answerable prompts</td></tr>
         <tr><td class="mono">abstention_precision</td><td>correct abstentions ÷ all abstentions</td></tr>
         <tr><td class="mono">calibration</td><td>correct abstention on unanswerable − wrong abstention on answerable. This is what separates a well-behaved model from a merely timid one; hallucination rate alone rewards blanket refusal.</td></tr>
       </tbody>
@@ -168,7 +168,7 @@
   <p>
     Two results are comparable only when suite major version, dataset revision, scorer version,
     judge configuration and sampling parameters all match. Every run records all five in its
-    manifest. A sampled run is labelled <span class="tag">sample</span> throughout and is not
+    run settings. A sampled run is labelled <span class="tag">sample</span> throughout and is not
     comparable to a full run.
   </p>
 </div>
@@ -177,7 +177,7 @@
   <h2>Suites currently defined</h2>
   <div class="table-scroll">
     <table>
-      <thead><tr><th>Suite</th><th>Family</th><th>Scorer</th><th>Criteria</th><th>Version</th></tr></thead>
+      <thead><tr><th>Test suite</th><th>Axis</th><th>Scorer</th><th>Criteria</th><th>Version</th></tr></thead>
       <tbody>
       {% for suite in suites %}
         <tr>

@@ -120,7 +120,7 @@ def _fmt(value, direction: str) -> str:
 
 
 def _entries(db: Session, user_id: int, family: str, suites: list[dict]) -> list[dict]:
-    """One entry per model target for a family, with its latest run if it has one."""
+    """One entry per selected model for an axis, with its latest run if it has one."""
     view = current()
     targets = list(db.scalars(
         select(ModelTarget).where(ModelTarget.user_id == user_id).order_by(ModelTarget.label)

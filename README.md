@@ -26,7 +26,7 @@ The sidebar is a workflow followed by the test harness:
 | Section | Page | What it is for |
 |---|---|---|
 | **Workflow** | 1 · Models Selected for Benchmarking | Add a model for benchmarking — provider, endpoint, your own API key. Test the connection before spending a run on it |
-| | 2 · Run tests | Start a suite against a target, watch progress, read results |
+| | 2 · Run tests | Start a test suite against a model, watch progress, read results |
 | | 3 · Compare models | Scorecard (every model × every axis), one ranked chart per axis against the pass/watch/fail zones, and per-language / per-hazard / per-probe / per-outcome breakdowns. Every number links to the run and its prompts and responses |
 | **Test harness** | Methodology | Every metric definition, threshold, weight, lexicon and judge, rendered from the live files; how the Working Group edits the tests; validation status |
 | | Test suites → Language, Safety, Bias, Grounding | One page per suite: readiness checklist, basis, the actual tests, thresholds, results, changelog and the YAML as it stands on disk |
@@ -103,7 +103,7 @@ It writes `data/ailuminate.jsonl` (git-ignored: hazardous text is not committed)
 `data/ailuminate.revision.json` (sha256 and upstream commit). The safety suite also needs
 a **judge**, set in the environment: `AISH_JUDGE_MODEL`, `AISH_JUDGE_ENDPOINT`,
 `AISH_JUDGE_PROVIDER` (default `openai_compatible`), `AISH_JUDGE_API_KEY`. The suite is
-restricted, so the judge and the target must be on-prem; a cloud judge or target is
+restricted, so the judge and the model under test must be on-prem; a cloud judge or model is
 refused. Without a judge the suite refuses to run.
 
 Calibrate the judge against human labels before relying on a score:

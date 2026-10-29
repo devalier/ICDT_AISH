@@ -1,6 +1,6 @@
-"""Run execution: turn a suite plus a user's model target into scored evidence.
+"""Run execution: turn a suite plus a user's model into scored results.
 
-A run is a manifest (suite + version + target + sampling parameters + dataset
+A run is a manifest (suite + version + model + sampling parameters + dataset
 revision), and the same manifest reproduces the same item set (REQ-EX-01/02).
 Prompts and responses are persisted as evidence for every item (REQ-EX-07).
 """
@@ -876,7 +876,7 @@ async def _execute(run_id: int) -> None:
             return
         target = session.get(ModelTarget, run.target_id)
         if target is None:
-            raise RunError("The model target for this run no longer exists.")
+            raise RunError("The model for this run was removed.")
         manifest = json.loads(run.manifest_json or "{}")
         suite_id, sample, seed = run.suite_id, run.sample_mode, int(manifest.get("seed", 20260921))
         provider, model_name, endpoint = target.provider, target.model_name, target.endpoint
@@ -918,7 +918,7 @@ async def _execute(run_id: int) -> None:
         try:
             api_key = decrypt_secret(ciphertext, owner)
         except DecryptionError as exc:
-            raise RunError("The stored API key for this target could not be decrypted.") from exc
+            raise RunError("The stored API key for this model could not be decrypted.") from exc
 
     with session_scope() as session:
         run = session.get(Run, run_id)

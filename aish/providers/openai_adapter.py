@@ -138,7 +138,7 @@ class OpenAIAdapter:
 
     async def generate(self, *, model, prompt, system, api_key, endpoint, params, timeout) -> Completion:
         if not api_key:
-            raise ProviderError("an OpenAI API key is required for this target")
+            raise ProviderError("an OpenAI API key is required for this model")
         return await _post_chat(
             base_url=endpoint or "https://api.openai.com/v1",
             api_key=api_key,
@@ -159,7 +159,7 @@ class DeepSeekAdapter:
 
     async def generate(self, *, model, prompt, system, api_key, endpoint, params, timeout) -> Completion:
         if not api_key:
-            raise ProviderError("a DeepSeek API key is required for this target")
+            raise ProviderError("a DeepSeek API key is required for this model")
         return await _post_chat(
             base_url=endpoint or "https://api.deepseek.com",
             api_key=api_key,
@@ -179,7 +179,7 @@ class OpenAICompatibleAdapter:
 
     async def generate(self, *, model, prompt, system, api_key, endpoint, params, timeout) -> Completion:
         if not endpoint:
-            raise ProviderError("an endpoint URL is required for an on-prem target")
+            raise ProviderError("an endpoint URL is required for an on-prem model")
         _ = get_settings()
         return await _post_chat(
             base_url=endpoint,

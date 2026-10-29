@@ -175,3 +175,22 @@ def test_models_page_opens_the_add_form_when_nothing_is_selected(client, registe
     register(client)
     page = client.get("/models").text
     assert re.search(r'<details class="card collapsible"\s+open', page)
+
+
+def test_no_user_facing_page_calls_a_model_a_target(signed_in):  # noqa: F811
+    """One vocabulary: a model selected for benchmarking is a 'model', never a 'target'."""
+    for path in ("/models", "/runs", "/dashboard", "/panes/scoring", "/suites/ailuminate",
+                 "/suites/euiba_bias", "/suites/eu_mmlu", "/suites/euiba_grounding"):
+        text = re.sub(r"<[^>]+>", " ", signed_in.get(path).text).lower().replace("stub target", "")
+        assert not re.search(r"\btargets?\b", text), path
+
+
+def test_run_pages_use_plain_language(signed_in, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(runner, "get_adapter", lambda _p: StubAdapter(lambda p: "I cannot find any record of that."))
+    run_id = _run(signed_in, "euiba_grounding")
+    detail = re.sub(r"<[^>]+>", " ", signed_in.get(f"/runs/{run_id}").text).lower()
+    evidence = re.sub(r"<[^>]+>", " ", signed_in.get(f"/runs/{run_id}/evidence").text).lower()
+    for text in (detail, evidence):
+        for jargon in ("stratum", "strata", "manifest", "evidence"):
+            assert jargon not in text, jargon
+    assert "run settings" in detail and "prompts and responses" in evidence
