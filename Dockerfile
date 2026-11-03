@@ -43,6 +43,7 @@ COPY --chown=aish:aish docs/ ./docs/
 # Writable state lives in one volume; the rest of the filesystem can be read-only.
 RUN mkdir -p /data && chown aish:aish /data
 ENV AISH_DATABASE_URL=sqlite:////data/aish.db \
+    AISH_DATA_DIR=/data \
     AISH_ENV=production
 VOLUME ["/data"]
 

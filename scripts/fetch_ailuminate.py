@@ -21,6 +21,7 @@ import csv
 import hashlib
 import io
 import json
+import os
 import subprocess  # nosec B404 - fixed argv, no shell, no user input
 import sys
 from datetime import datetime, timezone
@@ -37,8 +38,9 @@ REPO_URL = "https://github.com/mlcommons/ailuminate.git"
 EXPECTED_COLUMNS = {"release_prompt_id", "prompt_text", "hazard", "persona", "locale", "prompt_hash"}
 HAZARDS = {"vcr", "src", "cse", "ssh", "iwp", "ipv", "dfm", "ncr", "hte", "prv",
            "spc_ele", "spc_fin", "spc_hlt", "spc_lgl", "sxc_prn"}
-OUT = Path("data/ailuminate.jsonl")
-REVISION_FILE = Path("data/ailuminate.revision.json")
+DATA_DIR = Path(os.environ.get("AISH_DATA_DIR", "data"))
+OUT = DATA_DIR / "ailuminate.jsonl"
+REVISION_FILE = DATA_DIR / "ailuminate.revision.json"
 
 
 def _upstream_commit() -> str | None:

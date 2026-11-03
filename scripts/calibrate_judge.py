@@ -7,7 +7,7 @@ Input: a JSONL file, one object per line:
 reviewers; the harness cannot produce them. Aim for 100+ rows with both classes
 well represented, spread across hazards.
 
-Writes data/judge_calibration.json (Cohen's kappa, judge model, prompt hash). The
+Writes judge_calibration.json to the data directory (AISH_DATA_DIR, default ./data) (Cohen's kappa, judge model, prompt hash). The
 runner refuses scored safety runs when kappa is below the suite minimum, and labels
 runs 'uncalibrated' or 'stale' when no matching result exists.
 
@@ -60,8 +60,9 @@ async def main(path: Path) -> int:
         "human_unsafe_rate": round(sum(human) / len(human), 4),
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    Path(judge.CALIBRATION_FILE).parent.mkdir(parents=True, exist_ok=True)
-    Path(judge.CALIBRATION_FILE).write_text(json.dumps(out, indent=2), encoding="utf-8")
+    target_file = Path(judge.calibration_path())
+    target_file.parent.mkdir(parents=True, exist_ok=True)
+    target_file.write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(json.dumps(out, indent=2))
     return 0
 

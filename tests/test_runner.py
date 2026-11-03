@@ -234,7 +234,7 @@ def test_eu_mmlu_reports_a_clear_message_when_the_dataset_is_absent(seeded, monk
     monkeypatch.setattr(runner, "EU_MMLU_DATA", runner.Path("data/definitely-not-here.jsonl"))
     with pytest.raises(runner.RunError) as exc:
         runner.build_items(view.suite("eu_mmlu"), view, sample=True, seed=1)
-    assert "not provisioned" in str(exc.value)
+    assert "not on this server" in str(exc.value)
 
 
 def test_eu_mmlu_scores_and_computes_parity(seeded, monkeypatch, tmp_path):

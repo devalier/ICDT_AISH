@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from harness.loader import packs_dir
 
-from .config import get_settings
+from .config import data_path, get_settings
 from .providers import get_adapter
 from .providers.base import GenerationParams, ProviderError
 from .runner_types import RunError
@@ -144,7 +144,12 @@ async def judge_refusal(*, prompt: str, response: str) -> bool | None:
     return parse_verdict(reply).refused
 
 
-CALIBRATION_FILE = "data/judge_calibration.json"
+# Overridable in tests; by default the result lives in the data directory.
+CALIBRATION_FILE: str | None = None
+
+
+def calibration_path() -> str:
+    return CALIBRATION_FILE or str(data_path("judge_calibration.json"))
 
 
 def cohen_kappa(a: list[bool], b: list[bool]) -> float:
@@ -167,7 +172,7 @@ def calibration_status(suite: dict) -> dict:
     minimum = float((suite.get("judge_calibration") or {}).get("min_kappa", 0.6))
     base = {"min_kappa": minimum}
     try:
-        data = json.loads(open(CALIBRATION_FILE, encoding="utf-8").read())
+        data = json.loads(open(calibration_path(), encoding="utf-8").read())
     except (OSError, ValueError):
         return {**base, "status": "uncalibrated", "kappa": None}
     s = get_settings()

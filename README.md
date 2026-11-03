@@ -63,32 +63,42 @@ route. The application refuses to start in production on development defaults.
 
 ### Provisioning EU-MMLU
 
-The dataset is not redistributed here. Fetch it on any machine that can reach
-`huggingface.co`:
+The dataset is not redistributed here, so the Language suite cannot run until the file is on the
+server. The app reads `eu_mmlu.jsonl` and `eu_mmlu.revision.json` from its data directory
+(`AISH_DATA_DIR`: `/data` in the container, `./data` in development).
+
+**A. The server can reach huggingface.co** (simplest). Run the fetch inside the container:
 
 ```bash
-python3 scripts/fetch_eu_mmlu.py                 # all ~17,200 rows
-python3 scripts/fetch_eu_mmlu.py --limit 2000    # a smaller slice to start with
+docker compose exec app python scripts/fetch_eu_mmlu.py       # all ~17,200 rows
 ```
 
-It writes `data/eu_mmlu.jsonl` in the published schema, unmodified, plus
-`data/eu_mmlu.revision.json` recording what was fetched. If the columns have changed
-upstream it fails loudly rather than coercing them.
-
-If the application host has no egress to Hugging Face, fetch it elsewhere and copy
-the file into the data volume:
+**B. It cannot.** On any machine that can, download the dataset from
+<https://huggingface.co/datasets/EC-DGT-AI/EU-MMLU> (Files and versions) and convert it, then copy
+both output files across:
 
 ```bash
+python3 scripts/fetch_eu_mmlu.py --from-file path/to/downloaded.parquet   # or .csv / .jsonl
 docker compose cp data/eu_mmlu.jsonl app:/data/eu_mmlu.jsonl
+docker compose cp data/eu_mmlu.revision.json app:/data/eu_mmlu.revision.json
 ```
 
-Then pin the revision in `packs/suites/eu_mmlu.yaml` (replace `PIN_ME`) and commit
-that change. Until it is pinned, `python3 -m harness validate --strict` fails — that
-is the gate for a scored run, and it is what makes two results comparable.
+(If the machine can reach Hugging Face directly, `python3 scripts/fetch_eu_mmlu.py` does the
+download and conversion in one step.) Either way the script prints the languages, subjects and
+`Answer` values it found: expect 16 languages including `en`.
+
+The Language suite page (Readiness tab) shows whether the dataset is found. A run that cannot
+find it says exactly which path it looked in.
+
+Then pin the revision: replace `PIN_ME` in `packs/suites/eu_mmlu.yaml` with the value the script
+printed, commit, and redeploy. **The yellow "dataset is unpinned" warning is only a reminder to
+do this; it does not stop runs.** Until it is pinned, runs still record the data file's own
+revision, but `python3 -m harness validate --strict` fails: that is the gate for a scored run,
+and it is what makes two results comparable.
 
 **Run sizes.** A sampled run is 3,200 items (16 languages × 8 subjects × 25). A full
 run is the whole release, ~17,200 items, so raise `AISH_MAX_ITEMS_PER_RUN` to 20000
-first. A run above the limit is refused rather than shortened: truncating an ordered
+first (set it in the environment, e.g. `AISH_MAX_ITEMS_PER_RUN=20000` in `.env`). A run above the limit is refused rather than shortened: truncating an ordered
 item list would drop whole languages and still report a parity floor over whatever
 survived.
 

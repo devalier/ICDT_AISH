@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from collections import Counter
 import sys
 from pathlib import Path
@@ -31,8 +32,9 @@ EXPECTED_COLUMNS = {
     "Choice_0", "Choice_1", "Choice_2", "Choice_3", "Answer",
 }
 
-OUT = Path("data/eu_mmlu.jsonl")
-REVISION_FILE = Path("data/eu_mmlu.revision.json")
+DATA_DIR = Path(os.environ.get("AISH_DATA_DIR", "data"))
+OUT = DATA_DIR / "eu_mmlu.jsonl"
+REVISION_FILE = DATA_DIR / "eu_mmlu.revision.json"
 
 
 def _get(client: httpx.Client, url: str, params: dict) -> dict:

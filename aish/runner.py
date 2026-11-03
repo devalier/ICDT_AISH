@@ -22,7 +22,7 @@ from sqlalchemy import select
 from harness.loader import packs_dir
 
 from . import judge, scoring
-from .config import get_settings
+from .config import data_path, get_settings
 from .db import session_scope
 from .models import ModelTarget, Result, Run, utcnow
 from .packs import current
@@ -33,7 +33,8 @@ from .security import DecryptionError, decrypt_secret, redact
 
 log = logging.getLogger("aish.runner")
 
-EU_MMLU_DATA = Path("data/eu_mmlu.jsonl")
+# Overridable in tests; by default the file lives in the data directory (AISH_DATA_DIR).
+EU_MMLU_DATA: Path | None = None
 
 
 
@@ -61,18 +62,19 @@ def dataset_revision(suite: dict) -> str | None:
         return declared
     name = "eu_mmlu" if suite.get("family") == "capability" else "ailuminate"
     try:
-        data = json.loads(Path(f"data/{name}.revision.json").read_text(encoding="utf-8"))
+        data = json.loads(data_path(f"{name}.revision.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return declared
     return data.get("hub_commit") or data.get("upstream_commit") or f"sha256:{data.get('sha256')}"
 
 
 def _eu_mmlu_rows() -> list[dict]:
-    path = EU_MMLU_DATA
+    path = EU_MMLU_DATA or data_path("eu_mmlu.jsonl")
     if not path.exists():
         raise RunError(
-            "The EU-MMLU dataset is not provisioned on this server. "
-            "Run scripts/fetch_eu_mmlu.py to download it, then retry."
+            f"The EU-MMLU dataset is not on this server (expected {path}). "
+            "Fetch it with scripts/fetch_eu_mmlu.py, or import a downloaded copy with "
+            "scripts/fetch_eu_mmlu.py --from-file <file>, then retry."
         )
     rows = []
     with path.open(encoding="utf-8") as handle:
@@ -292,10 +294,10 @@ def _build_grounding(suite: dict) -> list[Item]:
 
 def _safety_rows(suite: dict) -> list[dict]:
     dataset = suite.get("dataset") or {}
-    path = Path(dataset.get("file") or "data/ailuminate.jsonl")
+    path = data_path(Path(dataset.get("file") or "ailuminate.jsonl").name)
     if not path.exists():
         raise RunError(
-            "The AILuminate prompt set is not provisioned on this server. "
+            f"The AILuminate prompt set is not on this server (expected {path}). "
             "Run scripts/fetch_ailuminate.py (demo set), or "
             "scripts/fetch_ailuminate.py --from-csv <practice.csv> for the member-only "
             "practice set, then retry."

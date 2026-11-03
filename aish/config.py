@@ -35,6 +35,10 @@ class Settings(BaseSettings):
 
     database_url: str = f"sqlite:///{BASE_DIR / 'data' / 'aish.db'}"
 
+    # Where provisioned datasets and the judge calibration result live. In the container
+    # this is the writable volume (/data); the application directory is read-only.
+    data_dir: str = str(BASE_DIR / "data")
+
     site_name: str = "EUIBA AI Safety Harness"
     public_host: str = "aish.devalier.com"
 
@@ -113,6 +117,13 @@ class Settings(BaseSettings):
             problems.append("AISH_DEBUG must be false in production")
         if problems:
             raise RuntimeError("refusing to start in production: " + "; ".join(problems))
+
+
+def data_path(name: str):
+    """A file in the data directory (datasets, revision records, calibration)."""
+    from pathlib import Path
+
+    return Path(get_settings().data_dir) / name
 
 
 @lru_cache
