@@ -5,11 +5,13 @@ menu_label: Language
 # Open actions before this suite is fit for EUIBA use. Shown on the suite page; edit
 # status to 'done' (via pull request) as each is completed.
 review:
-  - {item: "Dataset fetched on a connected machine and revision pinned", owner: "Data / infrastructure owner", status: pending}
-  - {item: "Subject list confirmed against the data (OQ-1: seven or eight)", owner: "Working Group", status: pending}
+  - {item: "Dataset fetched, validated and revision pinned (snapshot bundled in the repository)", owner: "Data / infrastructure owner", status: done}
+  - {item: "Subject list confirmed against the data: eight subjects (OQ-1)", owner: "Working Group", status: done}
   - {item: "Contamination policy for cloud models agreed (OQ-6)", owner: "Working Group", status: pending}
+  - {item: "Decision on partially translated languages (Irish, Hungarian, Portuguese) and on ES_ES", owner: "Working Group", status: pending}
+  - {item: "Report the upstream data defects to DG Translation (see datasets/eu_mmlu/ATTRIBUTION.md)", owner: "Working Group", status: pending}
   - {item: "Pass/watch/fail thresholds ratified (OQ-5)", owner: "Working Group", status: pending}
-version: 0.1.0
+version: 0.2.0
 owner: ICDT ET Working Group
 basis: docs/requirements.md#31-eu-mmlu--multilingual-capability
 description: >
@@ -24,8 +26,9 @@ applies_to: [llama-3.3-70b, mistral-small-24b, gpt-oss-120b, gpt-5.1, claude-4.6
 dataset:
   source: huggingface
   repo: EC-DGT-AI/EU-MMLU
-  revision: PIN_ME                  # REQ-EUM-07: pin before any scored run
-  split: test
+  revision: 6bf04b0030783b3c9074c8d59416ff761962568a   # upstream commit of the bundled snapshot (REQ-EUM-07)
+  split: test                       # MMLU convention: dev = few-shot exemplars, validation = tuning
+  snapshot: datasets/eu_mmlu/       # bundled copy, CC BY 4.0 / MIT, see ATTRIBUTION.md
   # Consumed as published, unmodified (REQ-EUM-01). A schema change must fail loudly.
   schema:
     language: Language
@@ -48,6 +51,8 @@ dataset:
     - sociology
 
 strata: [language, subject]
+# The 16 locales the dataset card lists. The release also contains ES_ES, which the card does
+# not list as released and whose file has conflicting rows, so it is deliberately not scored.
 languages: [en, hr, cs, nl, fr, de, el, hu, ga, it, lt, pl, pt, ro, sk, sl]
 reference_language: en              # parity is measured against this
 
@@ -88,3 +93,13 @@ changelog:
     date: 2026-09-21
     author: ICDT ET Working Group
     change: Initial definition against the EU-MMLU release (~17.2k rows, 16 languages).
+  - version: 0.2.0
+    date: 2026-11-04
+    author: ICDT ET Working Group (drafted with Claude)
+    change: >
+      Pinned to upstream commit 6bf04b003078 and bundled a validated snapshot.
+      Scores use the test split only (v0.1 would have mixed in dev and validation rows).
+      Samples are drawn from the reference language so every language is paired with it; the
+      release is partly translated (Irish, Hungarian, Portuguese are incomplete; European
+      history exists in only 6 languages), so parity is computed on shared questions.
+      131 upstream rows with malformed or conflicting keys are quarantined, not scored.

@@ -72,8 +72,7 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = 120.0
     max_concurrent_requests: int = 4
     # Must exceed the largest run the instance is expected to accept. Sampled
-    # EU-MMLU alone is 3,200 items (16 languages x 8 subjects x 25); a full run is
-    # ~17,200. A run that would exceed this is refused, never silently shortened.
+    # EU-MMLU alone is 2,755 prompts; a full run is 13,892 (test split, 16 languages). A run that would exceed this is refused, never silently shortened.
     max_items_per_run: int = 5000
 
     # LLM judge for safety suites (REQ-AIL-03/04). Deployment config, not pack content.
@@ -124,6 +123,17 @@ def data_path(name: str):
     from pathlib import Path
 
     return Path(get_settings().data_dir) / name
+
+
+def find_data(name: str):
+    """A dataset file: the data directory first (an operator's own copy), then the snapshot
+    bundled in the repository under datasets/eu_mmlu/. Returns the data-directory path when
+    neither exists, so error messages name where an operator should put it."""
+    primary = data_path(name)
+    if primary.exists():
+        return primary
+    bundled = BASE_DIR / "datasets" / "eu_mmlu" / name
+    return bundled if bundled.exists() else primary
 
 
 @lru_cache

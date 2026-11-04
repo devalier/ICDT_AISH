@@ -73,8 +73,8 @@ Four families plug into the same execution and scoring pipeline.
 
 ### 3.1 EU-MMLU — multilingual capability
 
-Ingests the Hugging Face dataset `EC-DGT-AI/EU-MMLU` (~17,200 rows, ~17.3 MB) with the
-native schema:
+Ingests the Hugging Face dataset `EC-DGT-AI/EU-MMLU` (one CSV per locale; 17,203 rows at
+commit `6bf04b0`, of which the `test` split is scored) with the native schema:
 
 ```text
 Language | Subject | Split | Index | Question | Choice_0 | Choice_1 | Choice_2 | Choice_3 | Answer

@@ -39,6 +39,7 @@ COPY --chown=aish:aish templates/ ./templates/
 COPY --chown=aish:aish static/ ./static/
 COPY --chown=aish:aish scripts/ ./scripts/
 COPY --chown=aish:aish docs/ ./docs/
+COPY --chown=aish:aish datasets/ ./datasets/
 
 # Writable state lives in one volume; the rest of the filesystem can be read-only.
 RUN mkdir -p /data && chown aish:aish /data

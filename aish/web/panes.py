@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from harness.loader import packs_dir
 
 from .. import judge, scoring
-from ..config import data_path, get_settings
+from ..config import data_path, find_data, get_settings
 from ..db import get_session
 from ..models import ModelTarget, Run
 from ..packs import current
@@ -248,10 +248,12 @@ def drill_capability(entries, suite, view) -> dict:
             continue
         parity = e["summary"].get("parity") or {}
         basis = e["summary"].get("parity_basis") or {}
+        paired_n = e["summary"].get("parity_n") or {}
         cells = [
             _cell(parity.get(lang), _grade(parity.get(lang), bands), "higher",
-                  f"{lang}: parity {parity.get(lang, float('nan')):.2f} vs {reference} "
-                  f"({basis.get(lang, 'n/a')} item set)" if lang in parity else f"{lang}: no data")
+                  f"{lang}: parity {parity.get(lang, float('nan')):.2f} vs {reference} on "
+                  f"{paired_n.get(lang, '?')} shared questions ({basis.get(lang, 'n/a')})"
+                  if lang in parity else f"{lang}: no data")
             for lang in languages
         ]
         floor = (e["summary"].get("metrics") or {}).get("parity_floor")
@@ -481,7 +483,7 @@ def _data_status(suite: dict) -> dict:
     name = "eu_mmlu" if family == "capability" else "ailuminate" if family == "safety" else None
     if name is None:
         return {"needed": False}
-    data, rev = data_path(f"{name}.jsonl"), data_path(f"{name}.revision.json")
+    data, rev = find_data(f"{name}.jsonl"), find_data(f"{name}.revision.json")
     status = {"needed": True, "present": data.exists(), "rows": None, "revision": None, "tier": None}
     if rev.exists():
         try:

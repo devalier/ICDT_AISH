@@ -61,46 +61,37 @@ Caddy terminates TLS for `aish.devalier.com` and obtains its certificate
 automatically. `deploy/nginx.conf` and `deploy/aish.service` cover the non-container
 route. The application refuses to start in production on development defaults.
 
-### Provisioning EU-MMLU
+### EU-MMLU dataset
 
-The dataset is not redistributed here, so the Language suite cannot run until the file is on the
-server. The app reads `eu_mmlu.jsonl` and `eu_mmlu.revision.json` from its data directory
-(`AISH_DATA_DIR`: `/data` in the container, `./data` in development).
+Nothing to provision: a validated, pinned snapshot of
+[EC-DGT-AI/EU-MMLU](https://huggingface.co/datasets/EC-DGT-AI/EU-MMLU) (17,069 rows, ~10 MB) is
+bundled in `datasets/eu_mmlu/` and baked into the image, with its licence, credit and a list of
+upstream data defects in `ATTRIBUTION.md`. The app uses a copy in its data directory
+(`AISH_DATA_DIR`: `/data` in the container) if one exists, otherwise the bundled snapshot.
 
-**A. The server can reach huggingface.co** (simplest). Run the fetch inside the container:
+What the harness does with it:
+- Scores the **test** split only (dev holds few-shot exemplars, validation is for tuning).
+- The 16 locales the dataset card lists are scored; the file also contains `ES_ES`, which the card
+  does not list as released and which has conflicting rows, so it is not.
+- The release is partly translated (Irish has 4 of 8 subjects). Parity is computed on the questions
+  a language shares with English, matched by `Index`, which is verified to line up.
+- 131 upstream rows with a malformed or conflicting key are quarantined, not scored or repaired.
+
+To refresh from upstream (a reviewed change: new rows, new pin):
 
 ```bash
-docker compose exec app python scripts/fetch_eu_mmlu.py       # all ~17,200 rows
+python3 scripts/fetch_eu_mmlu.py --out datasets/eu_mmlu            # downloads at the current commit
+python3 scripts/fetch_eu_mmlu.py --from-file path/to/csvs --out datasets/eu_mmlu   # offline
 ```
 
-**B. It cannot.** On any machine that can, download the dataset from
-<https://huggingface.co/datasets/EC-DGT-AI/EU-MMLU> (Files and versions) and convert it, then copy
-both output files across:
+then set `dataset.revision` in `packs/suites/eu_mmlu.yaml` to the commit it prints and bump the suite
+version.
 
-```bash
-python3 scripts/fetch_eu_mmlu.py --from-file path/to/downloaded.parquet   # or .csv / .jsonl
-docker compose cp data/eu_mmlu.jsonl app:/data/eu_mmlu.jsonl
-docker compose cp data/eu_mmlu.revision.json app:/data/eu_mmlu.revision.json
-```
-
-(If the machine can reach Hugging Face directly, `python3 scripts/fetch_eu_mmlu.py` does the
-download and conversion in one step.) Either way the script prints the languages, subjects and
-`Answer` values it found: expect 16 languages including `en`.
-
-The Language suite page (Readiness tab) shows whether the dataset is found. A run that cannot
-find it says exactly which path it looked in.
-
-Then pin the revision: replace `PIN_ME` in `packs/suites/eu_mmlu.yaml` with the value the script
-printed, commit, and redeploy. **The yellow "dataset is unpinned" warning is only a reminder to
-do this; it does not stop runs.** Until it is pinned, runs still record the data file's own
-revision, but `python3 -m harness validate --strict` fails: that is the gate for a scored run,
-and it is what makes two results comparable.
-
-**Run sizes.** A sampled run is 3,200 items (16 languages × 8 subjects × 25). A full
-run is the whole release, ~17,200 items, so raise `AISH_MAX_ITEMS_PER_RUN` to 20000
-first (set it in the environment, e.g. `AISH_MAX_ITEMS_PER_RUN=20000` in `.env`). A run above the limit is refused rather than shortened: truncating an ordered
-item list would drop whole languages and still report a parity floor over whatever
-survived.
+**Run sizes.** A sample run is 2,755 prompts (25 English questions per subject, plus the same
+questions in every other language that has them). A full run is 13,892 prompts, so set
+`AISH_MAX_ITEMS_PER_RUN=14000` first (compose passes it through from `.env`). A run above the limit
+is refused rather than shortened: truncating would drop whole languages and still report a parity
+floor over whatever survived.
 
 ### Provisioning AILuminate
 

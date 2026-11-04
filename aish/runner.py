@@ -22,7 +22,7 @@ from sqlalchemy import select
 from harness.loader import packs_dir
 
 from . import judge, scoring
-from .config import data_path, get_settings
+from .config import data_path, find_data, get_settings
 from .db import session_scope
 from .models import ModelTarget, Result, Run, utcnow
 from .packs import current
@@ -62,14 +62,14 @@ def dataset_revision(suite: dict) -> str | None:
         return declared
     name = "eu_mmlu" if suite.get("family") == "capability" else "ailuminate"
     try:
-        data = json.loads(data_path(f"{name}.revision.json").read_text(encoding="utf-8"))
+        data = json.loads(find_data(f"{name}.revision.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return declared
     return data.get("hub_commit") or data.get("upstream_commit") or f"sha256:{data.get('sha256')}"
 
 
 def _eu_mmlu_rows() -> list[dict]:
-    path = EU_MMLU_DATA or data_path("eu_mmlu.jsonl")
+    path = EU_MMLU_DATA or find_data("eu_mmlu.jsonl")
     if not path.exists():
         raise RunError(
             f"The EU-MMLU dataset is not on this server (expected {path}). "
@@ -110,45 +110,50 @@ def _answer_index(value, row_id: str) -> int:
 def _build_eu_mmlu(suite: dict, sample: bool, seed: int) -> list[Item]:
     rows = _eu_mmlu_rows()
     languages = {lang.lower() for lang in suite.get("languages") or []}
+    reference = str(suite.get("reference_language", "en")).lower()
+    # MMLU convention: `test` is the evaluation split. `dev` holds the few-shot exemplars and
+    # `validation` is for tuning, so neither belongs in a score (the card ships all three).
+    split = str((suite.get("dataset") or {}).get("split", "test")).lower()
     by_stratum: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for row in rows:
         language = str(row.get("Language", "")).lower()
         if languages and language not in languages:
             continue
+        if str(row.get("Split", "")).lower() != split:
+            continue
         by_stratum[(language, str(row.get("Subject", "")))].append(row)
 
     if not by_stratum:
-        raise RunError("No EU-MMLU rows matched this suite's language selection.")
+        raise RunError("No EU-MMLU rows matched this suite's language and split selection.")
 
     per_stratum = (suite.get("sampling_mode") or {}).get("items_per_stratum", 25)
     # Seeded, reproducible item selection — deliberately not a cryptographic RNG.
     rng = random.Random(seed)  # nosec B311
 
-    # Parity is accuracy relative to English "on the identical item set" (REQ-EUM-05), so
-    # a sample must pick the SAME questions in every language. Choose the Index set once
-    # per subject, from the indices every selected language has, and apply it everywhere.
+    # Parity is accuracy relative to the reference language "on the identical item set"
+    # (REQ-EUM-05), and the release is only partly translated in some languages (Irish covers
+    # four of the eight subjects). So a sample is drawn from the REFERENCE language's questions
+    # and every other language is asked whichever of those it has. Each language is then
+    # compared with the reference on the questions both have, which `Index` makes possible: the
+    # same (subject, split, Index) is the same question in every language.
     shared: dict[str, set] = {}
     if sample:
-        indices: dict[str, list[set]] = defaultdict(list)
-        for (language, subject), stratum_rows in by_stratum.items():
-            indices[subject].append({r.get("Index") for r in stratum_rows})
-        for subject, sets in indices.items():
-            common = set.intersection(*sets) if sets else set()
-            ordered = sorted(common, key=lambda v: (str(type(v)), v))
-            shared[subject] = set(rng.sample(ordered, min(per_stratum, len(ordered)))) if ordered else set()
+        for (language, subject), stratum_rows in sorted(by_stratum.items()):
+            if language == reference:
+                indices = sorted({r.get("Index") for r in stratum_rows},
+                                 key=lambda v: (str(type(v)), v))
+                shared[subject] = set(rng.sample(indices, min(per_stratum, len(indices))))
 
     items: list[Item] = []
     template = (suite.get("prompt") or {}).get("template", "")
 
     for (language, subject), stratum_rows in sorted(by_stratum.items()):
         chosen = sorted(stratum_rows, key=lambda r: r.get("Index", 0))
-        if sample:
-            if shared.get(subject):
-                chosen = [r for r in chosen if r.get("Index") in shared[subject]]
-            elif len(chosen) > per_stratum:
-                # Indices do not line up across languages for this subject; fall back to
-                # independent sampling and let the summary report parity as unpaired.
-                chosen = rng.sample(chosen, per_stratum)
+        if sample and subject in shared:
+            chosen = [r for r in chosen if r.get("Index") in shared[subject]]
+        elif sample and len(chosen) > per_stratum:
+            # The reference language lacks this subject; fall back to independent sampling.
+            chosen = rng.sample(chosen, per_stratum)
         for row in chosen:
             item_key = f"{language}/{subject}/{row.get('Index')}"
             choices = [str(row.get(f"Choice_{i}", "")) for i in range(4)]
@@ -546,6 +551,7 @@ def _summarise_capability(rows: list[Result], suite: dict) -> dict:
     ref_scores = _scored(by_language.get(reference, []))
     parity: dict[str, float] = {}
     parity_basis: dict[str, str] = {}
+    parity_n: dict[str, int] = {}
     for language, language_rows in by_language.items():
         if language == reference:
             continue
@@ -556,6 +562,7 @@ def _summarise_capability(rows: list[Result], suite: dict) -> dict:
             if ref_acc:
                 parity[language] = (sum(own[k] for k in common) / len(common)) / ref_acc
                 parity_basis[language] = "paired"
+                parity_n[language] = len(common)
         elif language in language_accuracy and language_accuracy.get(reference):
             parity[language] = language_accuracy[language] / language_accuracy[reference]
             parity_basis[language] = "unpaired"
@@ -594,6 +601,7 @@ def _summarise_capability(rows: list[Result], suite: dict) -> dict:
         "language_accuracy": language_accuracy,
         "parity": parity,
         "parity_basis": parity_basis,
+        "parity_n": parity_n,
     }
 
 
