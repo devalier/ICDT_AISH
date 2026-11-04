@@ -20,9 +20,18 @@
     "eu_mmlu_SK_SK.csv": "852ffc406b46475275345ab6d9114c58daa4079ef9f6c4ea3e68843e3fd3e73a",
     "eu_mmlu_SL_SI.csv": "e8ab5167a9139988409752f8b6cf1c7472c24e2d7eedc493ab0c60db1eb28dee"
   },
-  "sha256": "6d312da7fbaf4a99cf2ae19c06a658d3f9ac5b5d4b97bf2a8608b2d3da400e54",
-  "rows": 17069,
-  "rejected": 131,
+  "sha256": "00038ad4e7ab5fb31ab9d523ba20e11cec598a1d4d3d6b2206e1bc001b95a13a",
+  "rows": 17120,
+  "rejected": 15,
+  "repairs": {
+    "stray-index:fixed": 1,
+    "conflict-resolved:kept": 65,
+    "mislabelled-copy:removed": 28,
+    "alternate-rendering:removed": 2,
+    "foreign-copy:removed": 35,
+    "foreign-copy:quarantined": 6,
+    "mislabelled-copy:quarantined": 9
+  },
   "languages": {
     "CS": {
       "dev": 35,
@@ -46,7 +55,7 @@
     },
     "ES": {
       "dev": 40,
-      "test": 995,
+      "test": 1010,
       "validation": 96
     },
     "FR": {
@@ -66,7 +75,7 @@
     },
     "HU": {
       "dev": 35,
-      "test": 617,
+      "test": 618,
       "validation": 91
     },
     "IT": {
@@ -91,7 +100,7 @@
     },
     "PT": {
       "dev": 35,
-      "test": 741,
+      "test": 776,
       "validation": 91
     },
     "RO": {
@@ -112,13 +121,13 @@
   },
   "subjects": {
     "college_biology": 2586,
-    "college_chemistry": 1807,
+    "college_chemistry": 1808,
     "college_physics": 1856,
     "global_facts": 1955,
     "international_law": 2218,
     "management": 1887,
-    "sociology": 3678,
-    "high_school_european_history": 1082
+    "sociology": 3713,
+    "high_school_european_history": 1097
   },
   "licence": "Translations CC BY 4.0 (European Commission DG Translation and EMT Network); EN_GB unchanged from MMLU, MIT (Hendrycks et al.)"
 }

@@ -11,14 +11,15 @@ This script downloads those files at a pinned commit (or reads local copies), va
 row, and writes:
 
     eu_mmlu.jsonl            valid rows, otherwise unmodified (REQ-EUM-01)
-    eu_mmlu.rejected.jsonl   rows that failed validation, each with the reason
+    eu_mmlu.rejected.jsonl   rows that failed validation and could not be repaired, with the reason
+    eu_mmlu.repairs.jsonl    every repair or removal the repair rules made, with its evidence
     eu_mmlu.revision.json    upstream commit, per-file sha256, counts (REQ-EUM-07)
 
-A row is rejected, never repaired, if a field is malformed, or if two rows claim the same
-(Language, Subject, Split, Index): the release has such conflicts and there is no way to
-know which row is right. The run fails loudly if more than ``--max-rejected-share`` (default 2%) of the
-rows are rejected (default 2%): a format change rejects most of a file, while the known
-upstream defects are under 1%.
+A row with a malformed field, or two rows claiming the same (Language, Subject, Split, Index),
+is first rejected. scripts/eu_mmlu_repair.py then fixes or removes only what it can prove from
+the rest of the release; everything else stays rejected. The run fails loudly if more than
+``--max-rejected-share`` (default 2%) of the rows end up rejected: a format change rejects most
+of a file, while the known upstream defects leave well under 1%.
 
     python3 scripts/fetch_eu_mmlu.py                       # download, validate, write
     python3 scripts/fetch_eu_mmlu.py --from-file DIR|FILE...   # already-downloaded CSVs
@@ -41,6 +42,8 @@ from pathlib import Path
 DATASET = "EC-DGT-AI/EU-MMLU"
 API = f"https://huggingface.co/api/datasets/{DATASET}"
 RESOLVE = f"https://huggingface.co/datasets/{DATASET}/resolve"
+
+from eu_mmlu_repair import repair  # noqa: E402  (a sibling script; see its docstring)
 
 EXPECTED_COLUMNS = ["Language", "Subject", "Split", "Index", "Question",
                     "Choice_0", "Choice_1", "Choice_2", "Choice_3", "Answer"]
@@ -177,6 +180,7 @@ def main() -> int:
         locale_of[name] = match.group(1)
         rows.extend(read_csv_bytes(raw, name))
     accepted, rejected = validate(rows, locale_of)
+    accepted, rejected, repairs = repair(accepted, rejected)
 
     share = len(rejected) / max(1, len(rows))
     if share > args.max_rejected_share:
@@ -194,6 +198,9 @@ def main() -> int:
     with (args.out / "eu_mmlu.rejected.jsonl").open("w", encoding="utf-8") as handle:
         for row in rejected:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    with (args.out / "eu_mmlu.repairs.jsonl").open("w", encoding="utf-8") as handle:
+        for entry in repairs:
+            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     per = defaultdict(Counter)
     for row in clean:
@@ -205,6 +212,7 @@ def main() -> int:
         "sha256": hashlib.sha256((args.out / "eu_mmlu.jsonl").read_bytes()).hexdigest(),
         "rows": len(clean),
         "rejected": len(rejected),
+        "repairs": dict(Counter(f"{r['rule']}:{r['action']}" for r in repairs)),
         "languages": {lang: dict(c) for lang, c in sorted(per.items())},
         "subjects": dict(Counter(r["Subject"] for r in clean)),
         "licence": "Translations CC BY 4.0 (European Commission DG Translation and EMT Network); "
@@ -212,10 +220,13 @@ def main() -> int:
     }, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"\nwrote {len(clean):,} rows to {args.out / 'eu_mmlu.jsonl'}")
+    print(f"repairs: {len(repairs)} changes -> {args.out / 'eu_mmlu.repairs.jsonl'}")
+    for name, count in sorted(Counter(f"{r['rule']}: {r['action']}" for r in repairs).items()):
+        print(f"  {count:>3}  {name}")
     print(f"rejected {len(rejected)} rows -> {args.out / 'eu_mmlu.rejected.jsonl'}")
-    for reason, count in Counter(r["reason"].split(" ")[0] + " " + r["reason"].split(" ")[1]
-                                 for r in rejected).items():
-        print(f"  {count:>3}  {reason}...")
+    for name, count in sorted(Counter(r["reason"].split(":")[0] if ":" in r["reason"][:30] else
+                                      " ".join(r["reason"].split(" ")[:2]) for r in rejected).items()):
+        print(f"  {count:>3}  {name}")
     print(f"languages ({len(per)}): " + ", ".join(
         f"{lang}:{sum(c.values())}" for lang, c in sorted(per.items())))
     print("test-split questions per language: " + ", ".join(

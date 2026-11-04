@@ -88,7 +88,7 @@ def snapshot():
 def test_snapshot_matches_the_pin_and_the_published_schema(snapshot):
     rev = json.loads((SNAPSHOT / "eu_mmlu.revision.json").read_text())
     assert rev["hub_commit"] == current().suite("eu_mmlu")["dataset"]["revision"]
-    assert rev["rows"] == len(snapshot) == 17069 and rev["rejected"] == 131
+    assert rev["rows"] == len(snapshot) == 17120 and rev["rejected"] == 15
     assert all(list(r) == COLS for r in snapshot[:50])
     assert all(isinstance(r["Index"], int) and r["Answer"] in (0, 1, 2, 3) for r in snapshot)
     keys = Counter((r["Language"], r["Subject"], r["Split"], r["Index"]) for r in snapshot)
@@ -104,13 +104,16 @@ def test_snapshot_covers_the_sixteen_locales_and_eight_subjects(snapshot):
     assert len({r["Subject"] for r in snapshot}) == 8
     by = Counter(r["Language"] for r in test_rows)
     assert by["EN"] == 1036 and by["GA"] == 391          # the release is partly translated
+    assert by["HU"] == 618 and by["PT"] == 776
 
 
 def test_index_aligns_across_languages_so_paired_parity_is_valid(snapshot):
-    """Same (Subject, Split, Index) is the same question: every supported language's answer
-    equals the English one. This is the assumption paired parity rests on."""
+    """Same (Subject, Split, Index) is the same question: every language's answer, Spanish
+    included now that its defects are repaired, equals the English one. This is the assumption
+    paired parity rests on."""
     en = {(r["Subject"], r["Split"], r["Index"]): r["Answer"] for r in snapshot if r["Language"] == "EN"}
-    wanted = {l.upper() for l in current().suite("eu_mmlu")["languages"]} - {"EN"}
+    wanted = {r["Language"] for r in snapshot} - {"EN"}
+    assert len(wanted) == 16
     checked = 0
     for r in snapshot:
         if r["Language"] in wanted:
@@ -141,3 +144,28 @@ def test_a_perfect_model_scores_full_marks_with_paired_parity_on_the_real_data(s
     # Irish only has four of the eight subjects; it is paired on what it shares with English.
     assert summary["parity_n"]["ga"] < summary["parity_n"]["de"]
     assert summary["dataset_revision"] if "dataset_revision" in summary else True
+
+
+def test_the_repaired_defects_are_fixed_and_the_rest_are_documented(snapshot):
+    by = {(r["Language"], r["Subject"], r["Split"], r["Index"]): r for r in snapshot}
+    # Hungarian: the row with "12 másodperc" in its Index is back at Index 12, and matches English.
+    hu = by[("HU", "college_chemistry", "test", 12)]
+    assert "ciklobutil" in hu["Question"] and hu["Answer"] == by[("EN", "college_chemistry", "test", 12)]["Answer"]
+    # Portuguese: the stray German rows are gone and the subject is as complete as English.
+    sociology = [r for r in snapshot if r["Language"] == "PT" and r["Subject"] == "sociology" and r["Split"] == "test"]
+    assert len(sociology) == 201 and not any(r["Language"] == "PT" and "Laut Foucault" in r["Question"] for r in snapshot)
+    # Spanish: no Italian text, and no row is a copy of another subject's row.
+    assert not any(r["Language"] == "ES" and r["Question"].startswith("Questa domanda") for r in snapshot)
+    soc = {(r["Split"], r["Index"]): r["Question"] for r in snapshot
+           if r["Language"] == "ES" and r["Subject"] == "sociology"}
+    copies = [r for r in snapshot if r["Language"] == "ES" and r["Subject"] == "high_school_european_history"
+              and soc.get((r["Split"], r["Index"])) == r["Question"]]
+    assert not copies
+    # What could not be repaired is quarantined with a reason, and everything changed is logged.
+    with (SNAPSHOT / "eu_mmlu.rejected.jsonl").open(encoding="utf-8") as handle:
+        rejected = [json.loads(line) for line in handle if line.strip()]
+    assert len(rejected) == 15 and {r["Language"] for r in rejected} == {"ES"}
+    assert all(r["reason"].split(":")[0] in ("foreign-copy", "mislabelled-copy") for r in rejected)
+    with (SNAPSHOT / "eu_mmlu.repairs.jsonl").open(encoding="utf-8") as handle:
+        repairs = [json.loads(line) for line in handle if line.strip()]
+    assert len(repairs) == 146 and all(r["evidence"] for r in repairs)

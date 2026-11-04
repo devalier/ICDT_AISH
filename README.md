@@ -64,7 +64,7 @@ route. The application refuses to start in production on development defaults.
 ### EU-MMLU dataset
 
 Nothing to provision: a validated, pinned snapshot of
-[EC-DGT-AI/EU-MMLU](https://huggingface.co/datasets/EC-DGT-AI/EU-MMLU) (17,069 rows, ~10 MB) is
+[EC-DGT-AI/EU-MMLU](https://huggingface.co/datasets/EC-DGT-AI/EU-MMLU) (17,120 rows, ~10 MB) is
 bundled in `datasets/eu_mmlu/` and baked into the image, with its licence, credit and a list of
 upstream data defects in `ATTRIBUTION.md`. The app uses a copy in its data directory
 (`AISH_DATA_DIR`: `/data` in the container) if one exists, otherwise the bundled snapshot.
@@ -75,7 +75,10 @@ What the harness does with it:
   does not list as released and which has conflicting rows, so it is not.
 - The release is partly translated (Irish has 4 of 8 subjects). Parity is computed on the questions
   a language shares with English, matched by `Index`, which is verified to line up.
-- 131 upstream rows with a malformed or conflicting key are quarantined, not scored or repaired.
+- The release has defects (a malformed Hungarian row, German rows in the Portuguese file, Spanish
+  rows filed under the wrong subject or copied from Italian). `scripts/eu_mmlu_repair.py` fixes or
+  removes only what the rest of the release proves, logs every change with its evidence in
+  `eu_mmlu.repairs.jsonl`, and quarantines the 15 rows it cannot recover.
 
 To refresh from upstream (a reviewed change: new rows, new pin):
 
@@ -87,8 +90,8 @@ python3 scripts/fetch_eu_mmlu.py --from-file path/to/csvs --out datasets/eu_mmlu
 then set `dataset.revision` in `packs/suites/eu_mmlu.yaml` to the commit it prints and bump the suite
 version.
 
-**Run sizes.** A sample run is 2,755 prompts (25 English questions per subject, plus the same
-questions in every other language that has them). A full run is 13,892 prompts, so set
+**Run sizes.** A sample run is 2,760 prompts (25 English questions per subject, plus the same
+questions in every other language that has them). A full run is 13,928 prompts, so set
 `AISH_MAX_ITEMS_PER_RUN=14000` first (compose passes it through from `.env`). A run above the limit
 is refused rather than shortened: truncating would drop whole languages and still report a parity
 floor over whatever survived.
