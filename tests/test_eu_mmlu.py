@@ -59,10 +59,30 @@ def test_sample_mode_picks_the_same_questions_in_every_language(tmp_path, monkey
     assert [i.item_id for i in again] == [i.item_id for i in items]
 
 
-def test_sample_is_restricted_to_questions_present_in_all_languages(tmp_path, monkeypatch):
+def test_sample_is_drawn_from_the_reference_language_and_partial_languages_get_what_they_have(tmp_path, monkeypatch):
+    """The release is only partly translated, so a sample cannot require a question to exist in
+    every language (that would empty whole subjects). It is drawn from English; each language is
+    asked whichever of those questions it has."""
     _write(tmp_path, monkeypatch, drop={("ga", i) for i in range(0, 60, 2)})
     items = runner.build_items(_suite(), current(), sample=True, seed=7)
-    assert all(int(i.item_id.rsplit("/", 1)[1]) % 2 == 1 for i in items)
+    idx = {l: {int(i.item_id.rsplit("/", 1)[1]) for i in items if i.variant == l} for l in LANGS}
+    assert len(idx["en"]) == 25
+    assert idx["de"] == idx["en"]
+    assert idx["ga"] < idx["en"] and all(i % 2 == 1 for i in idx["ga"])
+
+
+def test_only_the_test_split_is_scored(tmp_path, monkeypatch):
+    path = tmp_path / "eu_mmlu.jsonl"
+    with path.open("w") as handle:
+        for split in ("dev", "test", "validation"):
+            for i in range(5):
+                handle.write(json.dumps({"Language": "en", "Subject": "sociology", "Split": split,
+                                         "Index": i, "Question": "q", "Choice_0": "a",
+                                         "Choice_1": "b", "Choice_2": "c", "Choice_3": "d",
+                                         "Answer": 0}) + "\n")
+    monkeypatch.setattr(runner, "EU_MMLU_DATA", path)
+    suite = dict(current().suite("eu_mmlu")); suite["languages"] = ["en"]
+    assert len(runner.build_items(suite, current(), sample=False, seed=1)) == 5
 
 
 def test_parity_is_computed_on_the_paired_item_set(seeded, tmp_path, monkeypatch):  # noqa: F811
@@ -86,3 +106,50 @@ def test_parity_is_computed_on_the_paired_item_set(seeded, tmp_path, monkeypatch
     assert summary["parity"]["de"] == pytest.approx(0.5)
     assert summary["parity"]["ga"] == pytest.approx(1.0)
     assert summary["metrics"]["parity_floor"] == pytest.approx(0.5)
+
+
+def test_dataset_is_read_from_the_configured_data_directory(tmp_path, monkeypatch):
+    """Regression: in the container the app's working directory is read-only /app, and the
+    README tells you to copy the dataset into the /data volume. The app must look there."""
+    from aish.config import get_settings
+
+    monkeypatch.setenv("AISH_DATA_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    monkeypatch.setattr(runner, "EU_MMLU_DATA", None)
+    (tmp_path / "eu_mmlu.jsonl").write_text(
+        "\n".join(json.dumps({
+            "Language": lang, "Subject": "sociology", "Split": "test", "Index": i,
+            "Question": "q", "Choice_0": "a", "Choice_1": "b", "Choice_2": "c",
+            "Choice_3": "d", "Answer": 0}) for lang in LANGS for i in range(3)),
+        encoding="utf-8")
+    items = runner.build_items(_suite(), current(), sample=False, seed=1)
+    assert len(items) == 9
+
+
+def test_missing_dataset_message_names_the_expected_path(tmp_path, monkeypatch):
+    from aish.config import get_settings
+
+    monkeypatch.setenv("AISH_DATA_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    monkeypatch.setattr("aish.config.BASE_DIR", tmp_path / "nowhere")  # no bundled snapshot
+    monkeypatch.setattr(runner, "EU_MMLU_DATA", None)
+    with pytest.raises(RunError) as err:
+        runner.build_items(_suite(), current(), sample=False, seed=1)
+    assert str(tmp_path / "eu_mmlu.jsonl") in str(err.value)
+    assert "--from-file" in str(err.value)
+
+
+def test_readiness_follows_the_data_directory(client, register, tmp_path, monkeypatch):
+    from aish.config import get_settings
+
+    monkeypatch.setenv("AISH_DATA_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    monkeypatch.setattr("aish.config.BASE_DIR", tmp_path / "nowhere")  # no bundled snapshot
+    register(client)
+    page = client.get("/suites/eu_mmlu").text
+    assert "Dataset provisioned on this server" in page and "missing" in page
+    assert "Dataset revision pinned in the suite file" in page
+    (tmp_path / "eu_mmlu.jsonl").write_text("{}\n")
+    (tmp_path / "eu_mmlu.revision.json").write_text(json.dumps({"rows": 17200, "sha256": "ab" * 32}))
+    page = client.get("/suites/eu_mmlu").text
+    assert "17,200 rows" in page

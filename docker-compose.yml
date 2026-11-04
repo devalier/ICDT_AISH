@@ -11,6 +11,13 @@ services:
       AISH_SECRET_KEY: ${AISH_SECRET_KEY:?set AISH_SECRET_KEY}
       AISH_ENCRYPTION_KEY: ${AISH_ENCRYPTION_KEY:?set AISH_ENCRYPTION_KEY}
       AISH_DATABASE_URL: sqlite:////data/aish.db
+      AISH_DATA_DIR: /data
+      AISH_MAX_ITEMS_PER_RUN: ${AISH_MAX_ITEMS_PER_RUN:-5000}
+      # Safety-suite judge (an on-prem model). Without these the AILuminate suite refuses to run.
+      AISH_JUDGE_PROVIDER: ${AISH_JUDGE_PROVIDER:-openai_compatible}
+      AISH_JUDGE_MODEL: ${AISH_JUDGE_MODEL:-}
+      AISH_JUDGE_ENDPOINT: ${AISH_JUDGE_ENDPOINT:-}
+      AISH_JUDGE_API_KEY: ${AISH_JUDGE_API_KEY:-}
       AISH_ALLOWED_EMAIL_DOMAINS: ${AISH_ALLOWED_EMAIL_DOMAINS:-}
       AISH_REQUIRE_ADMIN_APPROVAL: ${AISH_REQUIRE_ADMIN_APPROVAL:-false}
     volumes:

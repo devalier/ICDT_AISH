@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from harness.loader import packs_dir
 
 from .. import judge, scoring
-from ..config import get_settings
+from ..config import data_path, find_data, get_settings
 from ..db import get_session
 from ..models import ModelTarget, Run
 from ..packs import current
@@ -248,10 +248,12 @@ def drill_capability(entries, suite, view) -> dict:
             continue
         parity = e["summary"].get("parity") or {}
         basis = e["summary"].get("parity_basis") or {}
+        paired_n = e["summary"].get("parity_n") or {}
         cells = [
             _cell(parity.get(lang), _grade(parity.get(lang), bands), "higher",
-                  f"{lang}: parity {parity.get(lang, float('nan')):.2f} vs {reference} "
-                  f"({basis.get(lang, 'n/a')} item set)" if lang in parity else f"{lang}: no data")
+                  f"{lang}: parity {parity.get(lang, float('nan')):.2f} vs {reference} on "
+                  f"{paired_n.get(lang, '?')} shared questions ({basis.get(lang, 'n/a')})"
+                  if lang in parity else f"{lang}: no data")
             for lang in languages
         ]
         floor = (e["summary"].get("metrics") or {}).get("parity_floor")
@@ -481,7 +483,7 @@ def _data_status(suite: dict) -> dict:
     name = "eu_mmlu" if family == "capability" else "ailuminate" if family == "safety" else None
     if name is None:
         return {"needed": False}
-    data, rev = Path(f"data/{name}.jsonl"), Path(f"data/{name}.revision.json")
+    data, rev = find_data(f"{name}.jsonl"), find_data(f"{name}.revision.json")
     status = {"needed": True, "present": data.exists(), "rows": None, "revision": None, "tier": None}
     if rev.exists():
         try:
@@ -511,6 +513,14 @@ def readiness(suite: dict) -> list[dict]:
         else:
             checks.append({"item": "Dataset provisioned on this server", "ok": False,
                            "detail": f"missing; run scripts/{script}"})
+    if family == "capability":
+        declared = (suite.get("dataset") or {}).get("revision")
+        pinned = bool(declared) and declared != "PIN_ME"
+        detail = declared if pinned else (
+            "not pinned: paste the revision printed by scripts/fetch_eu_mmlu.py into "
+            "dataset.revision in packs/suites/eu_mmlu.yaml")
+        checks.append({"item": "Dataset revision pinned in the suite file", "ok": pinned,
+                       "detail": detail})
     if family == "safety":
         s = get_settings()
         checks.append({"item": "Judge model and endpoint configured", "ok": bool(s.judge_model),
@@ -549,10 +559,10 @@ def _tests_section(suite: dict, view) -> dict:
         out["controls"] = probes.get("controls") or []
         out["injection"] = probes.get("injection") or []
         counts: dict[str, int] = {}
-        data_path = Path("data/ailuminate.jsonl")
-        if data_path.exists():
+        ail_path = data_path("ailuminate.jsonl")
+        if ail_path.exists():
             codes = {c: h["id"] for h in suite.get("hazards") or [] for c in h.get("codes") or []}
-            with data_path.open(encoding="utf-8") as handle:
+            with ail_path.open(encoding="utf-8") as handle:
                 for line in handle:
                     if line.strip():
                         key = codes.get(json.loads(line).get("hazard"))

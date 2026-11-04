@@ -1,0 +1,133 @@
+{
+  "dataset": "EC-DGT-AI/EU-MMLU",
+  "hub_commit": "6bf04b0030783b3c9074c8d59416ff761962568a",
+  "files": {
+    "eu_mmlu_CS_CZ.csv": "44b0cfa394efab8d578732d82b0eddee3109d897978bc12f95d92c4b569c2663",
+    "eu_mmlu_DE_DE.csv": "e5ef069c77eecaf9e352bfc5360383a9d5728bf44a65ad75e72fabeb7a0d1fb7",
+    "eu_mmlu_EL_GR.csv": "0d1af6f0712aa9e87f56d6371d2200dfc2d043c6aa9b4dbc83367012428d0214",
+    "eu_mmlu_EN_GB.csv": "8c44d016cca93772af109122c8e114fcb07a20249628dc491e346dbf8e304aff",
+    "eu_mmlu_ES_ES.csv": "2aaf01109a89613c70a7c10a0d35164197337faf40a918241342354da8c724a5",
+    "eu_mmlu_FR_FR.csv": "b42416a8602874020f937144c06be2c9c38da86d4ad329e2010b7ea8862c1daa",
+    "eu_mmlu_GA_IE.csv": "e2f25b8fb752ae9ef155a3057ccd792f059b9bffcede88aa9bc350742a47d6f8",
+    "eu_mmlu_HR_HR.csv": "f8c9e415ee24623b2435287c3cd42203ba5d6d06a241b37461332b42c84461ed",
+    "eu_mmlu_HU_HU.csv": "74127db54ac6e089f8fdd012cc8023f959ab484384e58b851879c5b74071dfc8",
+    "eu_mmlu_IT_IT.csv": "3797577fbee7fcf77024eb8d7f3d6f68f40d7ada792abf65b51942874cf224ae",
+    "eu_mmlu_LT_LT.csv": "808e20ea39eb03ea8f6f1d80bacd30141e5805c2999e85b5464ae055f83a297b",
+    "eu_mmlu_NL_NL.csv": "11f10b17f41bb624d25532dec3f447bafb44d88abc4ec036c1c8f65a8b2ab1d6",
+    "eu_mmlu_PL_PL.csv": "0e67ee4787aea13cd5f56ed4ca3211c0b02e5ed14587612766f3995ba1233d45",
+    "eu_mmlu_PT_PT.csv": "372966a9d201a172b30af52e3ab4896bab28c929ba0683ccb0bbcecd4e46dabf",
+    "eu_mmlu_RO_RO.csv": "0822368851cbdbdedf59d0d702ab7243d29616b6bb919bfac293f8111fb3e481",
+    "eu_mmlu_SK_SK.csv": "852ffc406b46475275345ab6d9114c58daa4079ef9f6c4ea3e68843e3fd3e73a",
+    "eu_mmlu_SL_SI.csv": "e8ab5167a9139988409752f8b6cf1c7472c24e2d7eedc493ab0c60db1eb28dee"
+  },
+  "sha256": "00038ad4e7ab5fb31ab9d523ba20e11cec598a1d4d3d6b2206e1bc001b95a13a",
+  "rows": 17120,
+  "rejected": 15,
+  "repairs": {
+    "stray-index:fixed": 1,
+    "conflict-resolved:kept": 65,
+    "mislabelled-copy:removed": 28,
+    "alternate-rendering:removed": 2,
+    "foreign-copy:removed": 35,
+    "foreign-copy:quarantined": 6,
+    "mislabelled-copy:quarantined": 9
+  },
+  "languages": {
+    "CS": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    },
+    "DE": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    },
+    "EL": {
+      "dev": 40,
+      "test": 1036,
+      "validation": 109
+    },
+    "EN": {
+      "dev": 40,
+      "test": 1036,
+      "validation": 109
+    },
+    "ES": {
+      "dev": 40,
+      "test": 1010,
+      "validation": 96
+    },
+    "FR": {
+      "dev": 40,
+      "test": 1031,
+      "validation": 109
+    },
+    "GA": {
+      "dev": 20,
+      "test": 391,
+      "validation": 21
+    },
+    "HR": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    },
+    "HU": {
+      "dev": 35,
+      "test": 618,
+      "validation": 91
+    },
+    "IT": {
+      "dev": 40,
+      "test": 1036,
+      "validation": 109
+    },
+    "LT": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    },
+    "NL": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    },
+    "PL": {
+      "dev": 40,
+      "test": 1036,
+      "validation": 109
+    },
+    "PT": {
+      "dev": 35,
+      "test": 776,
+      "validation": 91
+    },
+    "RO": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    },
+    "SK": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    },
+    "SL": {
+      "dev": 35,
+      "test": 871,
+      "validation": 91
+    }
+  },
+  "subjects": {
+    "college_biology": 2586,
+    "college_chemistry": 1808,
+    "college_physics": 1856,
+    "global_facts": 1955,
+    "international_law": 2218,
+    "management": 1887,
+    "sociology": 3713,
+    "high_school_european_history": 1097
+  },
+  "licence": "Translations CC BY 4.0 (European Commission DG Translation and EMT Network); EN_GB unchanged from MMLU, MIT (Hendrycks et al.)"
+}

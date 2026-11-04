@@ -258,7 +258,9 @@ def _validate_dataset(c: _Collector, f: str, suite: dict) -> None:
         c.warn(
             f,
             "dataset.revision",
-            "dataset is unpinned; pin a revision hash before a scored run (REQ-EUM-07)",
+            "dataset is unpinned. Provision the data (scripts/fetch_eu_mmlu.py), then paste the "
+            "revision it prints into dataset.revision before a scored run (REQ-EUM-07). "
+            "Until then runs still record the data file's own revision.",
         )
 
 

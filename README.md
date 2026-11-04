@@ -61,36 +61,40 @@ Caddy terminates TLS for `aish.devalier.com` and obtains its certificate
 automatically. `deploy/nginx.conf` and `deploy/aish.service` cover the non-container
 route. The application refuses to start in production on development defaults.
 
-### Provisioning EU-MMLU
+### EU-MMLU dataset
 
-The dataset is not redistributed here. Fetch it on any machine that can reach
-`huggingface.co`:
+Nothing to provision: a validated, pinned snapshot of
+[EC-DGT-AI/EU-MMLU](https://huggingface.co/datasets/EC-DGT-AI/EU-MMLU) (17,120 rows, ~10 MB) is
+bundled in `datasets/eu_mmlu/` and baked into the image, with its licence, credit and a list of
+upstream data defects in `ATTRIBUTION.md`. The app uses a copy in its data directory
+(`AISH_DATA_DIR`: `/data` in the container) if one exists, otherwise the bundled snapshot.
+
+What the harness does with it:
+- Scores the **test** split only (dev holds few-shot exemplars, validation is for tuning).
+- The 16 locales the dataset card lists are scored; the file also contains `ES_ES`, which the card
+  does not list as released and which has conflicting rows, so it is not.
+- The release is partly translated (Irish has 4 of 8 subjects). Parity is computed on the questions
+  a language shares with English, matched by `Index`, which is verified to line up.
+- The release has defects (a malformed Hungarian row, German rows in the Portuguese file, Spanish
+  rows filed under the wrong subject or copied from Italian). `scripts/eu_mmlu_repair.py` fixes or
+  removes only what the rest of the release proves, logs every change with its evidence in
+  `eu_mmlu.repairs.jsonl`, and quarantines the 15 rows it cannot recover.
+
+To refresh from upstream (a reviewed change: new rows, new pin):
 
 ```bash
-python3 scripts/fetch_eu_mmlu.py                 # all ~17,200 rows
-python3 scripts/fetch_eu_mmlu.py --limit 2000    # a smaller slice to start with
+python3 scripts/fetch_eu_mmlu.py --out datasets/eu_mmlu            # downloads at the current commit
+python3 scripts/fetch_eu_mmlu.py --from-file path/to/csvs --out datasets/eu_mmlu   # offline
 ```
 
-It writes `data/eu_mmlu.jsonl` in the published schema, unmodified, plus
-`data/eu_mmlu.revision.json` recording what was fetched. If the columns have changed
-upstream it fails loudly rather than coercing them.
+then set `dataset.revision` in `packs/suites/eu_mmlu.yaml` to the commit it prints and bump the suite
+version.
 
-If the application host has no egress to Hugging Face, fetch it elsewhere and copy
-the file into the data volume:
-
-```bash
-docker compose cp data/eu_mmlu.jsonl app:/data/eu_mmlu.jsonl
-```
-
-Then pin the revision in `packs/suites/eu_mmlu.yaml` (replace `PIN_ME`) and commit
-that change. Until it is pinned, `python3 -m harness validate --strict` fails — that
-is the gate for a scored run, and it is what makes two results comparable.
-
-**Run sizes.** A sampled run is 3,200 items (16 languages × 8 subjects × 25). A full
-run is the whole release, ~17,200 items, so raise `AISH_MAX_ITEMS_PER_RUN` to 20000
-first. A run above the limit is refused rather than shortened: truncating an ordered
-item list would drop whole languages and still report a parity floor over whatever
-survived.
+**Run sizes.** A sample run is 2,760 prompts (25 English questions per subject, plus the same
+questions in every other language that has them). A full run is 13,928 prompts, so set
+`AISH_MAX_ITEMS_PER_RUN=14000` first (compose passes it through from `.env`). A run above the limit
+is refused rather than shortened: truncating would drop whole languages and still report a parity
+floor over whatever survived.
 
 ### Provisioning AILuminate
 
