@@ -21,7 +21,10 @@
           <label for="suite_id">Test suite</label>
           <select id="suite_id" name="suite_id" required>
             {% for suite in suites %}
-              <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (v{{ suite.version }})</option>
+              <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (official v{{ suite.version }})</option>
+              {% if suite.id in my_versions %}
+                <option value="{{ suite.id }}:custom"{% if selected_suite == suite.id ~ ':custom' %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — MY VERSION of {{ suite.get('title', suite.id) }} ({{ my_versions[suite.id].fingerprint[:6] }})</option>
+              {% endif %}
             {% endfor %}
           </select>
         </div>
@@ -82,6 +85,7 @@
             <td>
               <a href="/runs/{{ run.id }}">{{ suite_names.get(run.suite_id, run.suite_id) }}</a>
               <div class="cell-meta">v{{ run.suite_version }}
+                {% if run_fingerprints.get(run.id) %}· <span class="badge-custom">custom</span>{% endif %}
                 {% if run.sample_mode %}· <span class="tag">sample</span>{% endif %}</div>
             </td>
             <td class="small">{{ labels.get(run.target_id, '—') }}</td>

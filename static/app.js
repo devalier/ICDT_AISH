@@ -148,3 +148,23 @@ document.addEventListener("click", function (e) {
   window.setTimeout(function () { window.location.reload(); },
                     parseInt(el.getAttribute("data-autorefresh"), 10) || 5000);
 })();
+
+
+/* Starter examples: insert the example text into the editor, just before the section that follows
+   the list it belongs in (data-insert-before is a regular expression for that section's key). */
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest && e.target.closest("[data-insert-from]");
+  if (!btn) return;
+  var editor = document.querySelector("[data-yaml-editor]");
+  var source = document.getElementById(btn.getAttribute("data-insert-from"));
+  if (!editor || !source) return;
+  var snippet = source.textContent.replace(/\s+$/, "") + "\n\n";
+  var re = new RegExp(btn.getAttribute("data-insert-before"), "m");
+  var m = re.exec(editor.value);
+  var at = m ? m.index : editor.value.length;
+  editor.value = editor.value.slice(0, at) + snippet + editor.value.slice(at);
+  editor.focus();
+  editor.setSelectionRange(at, at + snippet.length);
+  var line = editor.value.slice(0, at).split("\n").length;
+  editor.scrollTop = Math.max(0, (line - 4) * 18);
+});

@@ -18,9 +18,19 @@
   </div>
   <div class="actions">
     <a class="button" href="/runs?suite={{ suite.id }}">Run this suite</a>
+    <a class="button secondary" href="/suites/{{ suite.id }}/customise">{{ 'Edit my version' if my_row else 'Customise' }}</a>
     <a class="button secondary" href="/dashboard#axis-{{ family }}">Compare models</a>
   </div>
 </div>
+{% if my_row %}
+  <div class="notice">
+    <strong>You have your own version of this suite <span class="badge-custom">custom {{ my_row.fingerprint[:6] }}</span></strong>
+    The official suite is unchanged. Your version is run and compared separately.
+    <a href="/runs?suite={{ suite.id }}:custom">Run my version</a> ·
+    <a href="/suites/{{ suite.id }}/customise">Edit</a> ·
+    <a href="#tab-provenance">See what I changed</a>
+  </div>
+{% endif %}
 <p class="lede">{{ suite.description }}</p>
 
 {% if problems %}
@@ -42,6 +52,12 @@
   </div>
 
   <section class="tab-pane" id="tab-results" role="tabpanel" aria-labelledby="t-results">
+    {% if my_row %}
+      <p class="small">Showing results for:
+        <a class="seg-link {{ '' if harness == 'mine' else 'on' }}" href="/suites/{{ suite.id }}">Official</a>
+        <a class="seg-link {{ 'on' if harness == 'mine' else '' }}" href="/suites/{{ suite.id }}?harness=mine#tab-results">My version</a>
+        <span class="muted">Runs of different versions are never charted together.</span></p>
+    {% endif %}
     {% if results and results.has_runs %}
       <div class="card">
         <h3 class="chart-title">{{ headline[1] }} by model</h3>
@@ -121,6 +137,13 @@
   </section>
 
   <section class="tab-pane" id="tab-provenance" role="tabpanel" aria-labelledby="t-provenance">
+    {% if my_row %}
+      <div class="card">
+        <h3>What I changed <span class="badge-custom">custom {{ my_row.fingerprint[:6] }}</span></h3>
+        {% if my_row.note %}<p class="small">Note: {{ my_row.note }}</p>{% endif %}
+        {% if diff %}<pre class="source diff">{{ diff }}</pre>{% else %}<p class="muted small">No difference from the official text.</p>{% endif %}
+      </div>
+    {% endif %}
     <div class="card">
       <h3>Changelog</h3>
       {% for entry in suite.changelog %}

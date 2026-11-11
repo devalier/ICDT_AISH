@@ -5,6 +5,12 @@
 {% block content %}
 
 <h1>Compare models</h1>
+{% if my_versions %}
+  <p class="small">Showing results for:
+    <a class="seg-link {{ '' if harness == 'mine' else 'on' }}" href="/dashboard">Official suites</a>
+    <a class="seg-link {{ 'on' if harness == 'mine' else '' }}" href="/dashboard?harness=mine">My versions ({{ my_versions|length }})</a>
+    <span class="muted">Results from different versions of a suite are never charted together.</span></p>
+{% endif %}
 <p class="lede">
   Four axes, never averaged: a model can be strong on one and unacceptable on another. Every figure links to its run, and from there to the prompts and responses.
 </p>

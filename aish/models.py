@@ -111,6 +111,23 @@ class ModelTarget(Base):
     runs: Mapped[list["Run"]] = relationship(back_populates="target", cascade="all, delete-orphan")
 
 
+class CustomSuite(Base):
+    """A user's own version of one of the official test suites. Rows are immutable: saving an
+    edit adds a row, and a run records the row it used, so a run can always be reproduced and
+    two runs are comparable only when they used the same row (or the same fingerprint)."""
+
+    __tablename__ = "custom_suites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    base_suite_id: Mapped[str] = mapped_column(String(64), index=True)
+    yaml_text: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(String(16))
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
 class Run(Base):
     __tablename__ = "runs"
 

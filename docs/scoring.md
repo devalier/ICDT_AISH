@@ -66,6 +66,13 @@ every other hazard.
 
 ### EUIBA Bias
 
+Two probe types beyond counterfactual substitution: **name-based** probes (`pools`) imply the group
+through a name drawn from a per-group pool, and **loaded-premise** probes (`scoring.method: judge`)
+are labelled by a judge model with an author-written rubric. Judged outcomes are `favourable`,
+`unfavourable`, `neutral` (excluded from the rate) or `unparseable`; the judge's identity and prompt hash
+are recorded with the run.
+
+
 | Metric | Definition |
 |---|---|
 | `rate_disparity` | `max(rate_v) − min(rate_v)` across a matched group |

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% set active = 'suite:' ~ suite.id %}
+{% block title %}Customise {{ suite.get('title', suite.id) }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>Customise <span class="muted">· {{ family_label }} · {{ suite.get('title', suite.id) }}</span></h1>
+  </div>
+  <div class="actions"><a class="button secondary" href="/suites/{{ suite.id }}">Back to the suite</a></div>
+</div>
+<p class="lede">
+  This is your personal copy of the suite. The official one is not touched. Runs of your version are
+  labelled <span class="tag">custom</span> and are compared only with other runs of the same version.
+  {% if custom_row %}You have a saved version (<span class="mono">{{ custom_row.fingerprint }}</span>).{% endif %}
+</p>
+
+{% if problems %}
+  {% set errs = problems|selectattr('severity', 'equalto', 'error')|list %}
+  {% set warns = problems|rejectattr('severity', 'equalto', 'error')|list %}
+  {% if errs %}
+    <div class="error-box"><strong>{{ errs|length }} problem{{ 's' if errs|length != 1 }} to fix before this can be saved</strong>
+      {% for p in errs %}<div class="small"><span class="mono">{{ p.path or 'file' }}</span>: {{ p.message }}</div>{% endfor %}</div>
+  {% endif %}
+  {% if warns %}
+    <div class="notice"><strong>Worth a look</strong>
+      {% for p in warns %}<div class="small"><span class="mono">{{ p.path or 'file' }}</span>: {{ p.message }}</div>{% endfor %}</div>
+  {% endif %}
+{% endif %}
+{% if valid and not (problems|selectattr('severity', 'equalto', 'error')|list) %}
+  <div class="notice"><strong>This is valid.</strong> You can preview it, try it on a model, or save it.</div>
+{% endif %}
+
+<form method="post" action="/suites/{{ suite.id }}/customise" class="stack" data-editor>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="yaml_text">The suite, as YAML
+    <span class="hint">Edit the text below. Indentation matters. You cannot change the suite's id, scorer, dataset or restricted setting.</span></label>
+  <textarea id="yaml_text" name="yaml_text" rows="30" spellcheck="false" class="code-editor" data-yaml-editor>{{ text }}</textarea>
+
+  <div class="select-bar">
+    <button type="submit" name="action" value="check" class="secondary">Check</button>
+    <button type="submit" name="action" value="preview" class="secondary">Preview prompts</button>
+    <span class="try-group">
+      <select name="target_id" aria-label="Model to try on">
+        <option value="">Try on a model…</option>
+        {% for t in targets %}<option value="{{ t.id }}" {% if chosen_target == t.id %}selected{% endif %}>{{ t.label }}</option>{% endfor %}
+      </select>
+      <button type="submit" name="action" value="try" class="secondary">Try (up to 6 prompts)</button>
+    </span>
+  </div>
+  <div class="select-bar">
+    <input type="text" name="note" maxlength="200" placeholder="What did you change? (optional)" aria-label="Note about this version" class="note-input">
+    <button type="submit" name="action" value="save">Save as my version</button>
+    <button type="submit" name="action" value="official" class="secondary" title="Replace the text above with the official suite (not saved until you save)">Start again from official</button>
+    {% if custom_row %}
+      <button type="submit" name="action" value="reset" class="danger"
+              data-confirm="Go back to the official suite? Your saved version stays in your run history but is no longer used.">Reset to official</button>
+    {% endif %}
+  </div>
+</form>
+
+{% if examples %}
+<div class="card">
+  <h2>Starter examples</h2>
+  <p class="muted small">Each is inserted into the right place in the text above. Edit it, then Check.</p>
+  {% for ex in examples %}
+    <details class="example">
+      <summary><strong>{{ ex.title }}</strong> <span class="muted small">{{ ex.blurb }}</span></summary>
+      <pre class="source" id="ex-{{ ex.id }}">{{ ex.yaml }}</pre>
+      <button type="button" class="secondary small" data-insert-from="ex-{{ ex.id }}" data-insert-before="{{ ex.before }}">Insert into the editor</button>
+    </details>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if preview %}
+<div class="card">
+  <h2>Preview <span class="muted small">{{ preview.total }} prompts in {{ preview.groups }} groups (a sample run sends fewer)</span></h2>
+  {% if preview.note %}<p class="muted small">{{ preview.note }}</p>{% endif %}
+  {% if preview.uses_judge %}<p class="small">Some prompts are scored by a judge model with your rubric, so a run needs the judge configured by your administrator.</p>{% endif %}
+  {% for ex in preview.examples %}
+    <div class="example-prompt">
+      <div class="cell-meta"><span class="mono">{{ ex.stratum }}</span> · {{ ex.variant }}{% if ex.name %} · name used: <strong>{{ ex.name }}</strong>{% endif %}{% if ex.judged %} · <span class="tag">judge scored</span>{% endif %}</div>
+      {% if ex.system %}<div class="cell-meta">System prompt:</div><pre class="evidence-text">{{ ex.system }}</pre>{% endif %}
+      <pre class="evidence-text">{{ ex.prompt }}</pre>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if tried %}
+<div class="card">
+  <h2>Tried on a model</h2>
+  <p class="muted small">Up to 6 prompts, one per group. This is a quick look to tune wording and rubrics, not a result: it is not stored and does not count.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Group</th><th>Prompt</th><th>Response</th><th>Scored as</th></tr></thead>
+    <tbody>
+    {% for row in tried %}
+      <tr>
+        <td class="small mono">{{ row.stratum }}<div class="cell-meta">{{ row.variant }}</div></td>
+        <td class="small">{{ row.prompt }}</td>
+        <td class="small">{% if row.error %}<span class="status status-bad">{{ row.error }}</span>{% else %}{{ row.response }}{% endif %}</td>
+        <td class="small"><span class="tag">{{ row.outcome or '—' }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+</div>
+{% endif %}
+{% endblock %}

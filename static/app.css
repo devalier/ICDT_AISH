@@ -457,3 +457,25 @@ fieldset.model-picker .pick { display: flex; gap: 8px; align-items: center; padd
 .page-head .pill-row { margin-top: 4px; }
 .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 10px; align-items: start; }
 .two-col > .card { margin-bottom: 0; }
+
+
+/* ----------------------------------------------------------- customise */
+
+textarea.code-editor {
+  width: 100%; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; tab-size: 2;
+  white-space: pre; overflow: auto; background: var(--surface-sunken); color: var(--ink);
+  border: 1px solid var(--axis); border-radius: 8px; padding: 10px 12px; resize: vertical;
+}
+.try-group { display: inline-flex; gap: 6px; align-items: center; }
+.try-group select { width: auto; }
+.note-input { flex: 1 1 260px; min-width: 200px; }
+details.example { margin: 6px 0; }
+details.example pre { margin: 6px 0; }
+.example-prompt { margin: 8px 0; }
+.badge-custom { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 4px;
+  background: var(--tint-watch); border: 1px solid var(--warning); color: var(--ink); text-transform: uppercase; letter-spacing: .04em; }
+
+a.seg-link { display: inline-block; padding: 2px 10px; border: 1px solid var(--axis); border-radius: 999px; margin: 0 4px 0 2px;
+  text-decoration: none; color: var(--ink-2); font-size: 12.5px; }
+a.seg-link.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+pre.diff { max-height: 420px; overflow: auto; }
