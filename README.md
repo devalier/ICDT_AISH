@@ -122,6 +122,42 @@ prompt, and are refused if Cohen's kappa is below the suite minimum (0.6). The l
 come from human reviewers and are not in this repository. Scores are always labelled
 **unofficial**: the MLCommons ensemble evaluator and grading are not used.
 
+## Customising a test suite
+
+Any signed-in user can keep a personal copy of any of the four suites (Language, Safety, Bias,
+Grounding) and change it: open the suite and press **Customise**. The official suite is never touched.
+
+The editor lists the **actual existing tests** of that suite, each with a form:
+
+| Suite | What you can edit |
+|---|---|
+| **Bias** | each probe: the prompt, who the groups are (a standard list, your own list, or names that imply each group), how a reply is scored (decision words, or a judge model with a rubric you write), the headline measure. Add, duplicate or delete probes |
+| **Grounding** | each question: the question, a supplied text (from the library, or written inline), the accepted answers, whether to check citations. Add, duplicate or delete |
+| **Safety** | the definition of "unsafe" for each hazard (what the judge sees), the benign control prompts, the injection and extraction probes. The MLCommons prompts are restricted and are not shown or editable |
+| **Language** | the prompt template around each question, which languages are tested, the sample size. The questions come from EU-MMLU and are fixed |
+
+Changes are kept as a draft as you go. **Preview prompts** shows what would be sent; **Try** sends up to
+6 of the prompts to one of your models and shows how each was scored (not stored), so you can tune a
+rubric before spending a run; **Save as my version** makes it runnable. It then appears on the Run page
+as "MY VERSION", labelled *custom* with a fingerprint. Runs of your version are charted separately
+("My versions" on Compare models) and never mixed with official results or with an older version of your own.
+Anything the forms do not cover can be edited under **Advanced: edit the whole suite as text**.
+
+What you cannot change: the suite id, scorer, dataset source, thresholds, the judge, or the `restricted`
+setting. A copy of a restricted suite stays restricted. Nothing is code: it is YAML, parsed safely
+(no anchors, size-limited), and checked by the same validator as the official files.
+
+Two Bias probe types are available through those forms, and in YAML:
+- **Names** (`pools:`): the group is never stated; each group has a pool of names and replicates use
+  different names. Use 5 or more names per group.
+- **Loaded premise** (`kind: loaded_premise`, `scoring: {method: judge}`): a stereotype is stated as fact
+  and a judge model, using your rubric, labels the response `CHALLENGES`, `ENDORSES` or `NEUTRAL`. The
+  disparity across groups is how unevenly the model pushes back. Bias suites are not restricted, so the
+  judge may be a cloud model (`AISH_JUDGE_*`); a restricted suite still needs an on-prem judge.
+
+To share a version upstream, send a pull request with the YAML. Official suites change only through
+the Working Group's review.
+
 ## The editable test-and-criteria module
 
 Every test, probe, threshold and pass/fail criterion lives in `packs/` as YAML under
@@ -178,3 +214,11 @@ Thresholds are placeholders pending Working Group ratification. The EU-MMLU revi
 unpinned until the dataset is fetched (`validate --strict` fails until then). The grounding
 facts and the bias-probe translations were drafted with an AI assistant and need Working
 Group and native-speaker review. The safety judge is uncalibrated until human labels exist.
+
+## Licence
+
+Licensed under the **European Union Public Licence v. 1.2 (EUPL-1.2)**: see [`LICENSE`](LICENSE) and
+[`NOTICE`](NOTICE). This covers the code, the Working Group's test definitions and probes, the judge
+prompts and the documentation. Third-party material keeps its own licence: the bundled EU-MMLU
+snapshot is CC BY 4.0 / MIT ([`datasets/eu_mmlu/ATTRIBUTION.md`](datasets/eu_mmlu/ATTRIBUTION.md)), and the
+MLCommons AILuminate prompts are fetched under MLCommons' terms, never committed.

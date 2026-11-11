@@ -148,3 +148,22 @@ document.addEventListener("click", function (e) {
   window.setTimeout(function () { window.location.reload(); },
                     parseInt(el.getAttribute("data-autorefresh"), 10) || 5000);
 })();
+
+
+/* Show a form field only while another field has a given value, e.g. data-show-when="scoring_mode=judge".
+   Without JavaScript every field is visible, so the form still works. */
+(function () {
+  "use strict";
+  function apply(form) {
+    form.querySelectorAll("[data-show-when]").forEach(function (el) {
+      var parts = el.getAttribute("data-show-when").split("=");
+      var control = form.querySelector('[name="f_' + parts[0] + '"]');
+      if (!control) return;
+      el.hidden = parts[1].split("|").indexOf(control.value) === -1;
+    });
+  }
+  document.querySelectorAll("[data-mode-form]").forEach(function (form) {
+    apply(form);
+    form.addEventListener("change", function () { apply(form); });
+  });
+})();

@@ -111,6 +111,37 @@ class ModelTarget(Base):
     runs: Mapped[list["Run"]] = relationship(back_populates="target", cascade="all, delete-orphan")
 
 
+class CustomSuite(Base):
+    """A user's own version of one of the official test suites. Rows are immutable: saving an
+    edit adds a row, and a run records the row it used, so a run can always be reproduced and
+    two runs are comparable only when they used the same row (or the same fingerprint)."""
+
+    __tablename__ = "custom_suites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    base_suite_id: Mapped[str] = mapped_column(String(64), index=True)
+    yaml_text: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(String(16))
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
+class CustomDraft(Base):
+    """Work in progress on a personal version. One per user and suite, overwritten as the user
+    edits; it can be invalid. Only "Save as my version" turns a valid draft into a CustomSuite."""
+
+    __tablename__ = "custom_drafts"
+    __table_args__ = (UniqueConstraint("user_id", "base_suite_id", name="uq_draft_per_user_suite"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    base_suite_id: Mapped[str] = mapped_column(String(64))
+    yaml_text: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Run(Base):
     __tablename__ = "runs"
 

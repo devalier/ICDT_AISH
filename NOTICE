@@ -1,0 +1,21 @@
+EUIBA AI Safety Harness (ICDT_AISH)
+Copyright (c) 2026 the ICDT ET Working Group and contributors
+
+Licensed under the EUPL
+
+This work is licensed under the European Union Public Licence v. 1.2 (EUPL-1.2). The full text
+is in the LICENSE file. See https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+
+What the EUPL covers here
+  The application code, the test definitions and probes written by the Working Group (packs/),
+  the judge prompts, the scripts, the tests and the documentation.
+
+What it does not cover
+  Third-party material keeps its own licence, stated beside it:
+  - datasets/eu_mmlu/   EU-MMLU: translations CC BY 4.0 (European Commission DG Translation and
+                        the EMT Network); English rows MIT (Hendrycks et al.). See
+                        datasets/eu_mmlu/ATTRIBUTION.md.
+  - MLCommons AILuminate prompts are not distributed in this repository; they are fetched
+    under MLCommons' terms (the demo set is CC BY 4.0) into the data directory.
+  - Python dependencies (requirements.txt) are installed from their own distributions under
+    their own licences (MIT, BSD, Apache-2.0).

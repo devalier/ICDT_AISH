@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import BASE_DIR, get_settings
 from .db import init_db
 from .runner import bind_event_loop
-from .web import auth, panes, runs, targets
+from .web import auth, customise, panes, runs, targets
 from .web.deps import templates
 from .web.middleware import RequestGuardMiddleware, SecurityHeadersMiddleware
 
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(targets.router)
     app.include_router(runs.router)
+    app.include_router(customise.router)
     app.include_router(panes.router)
 
     @app.exception_handler(HTTPException)

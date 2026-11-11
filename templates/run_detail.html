@@ -7,7 +7,7 @@
 <h1>{{ suite.get('menu_label', run.suite_id) if suite else run.suite_id }} <span class="muted">· {{ suite.get('title', '') if suite else '' }} · run {{ run.id }}</span></h1>
 <p class="lede">
   {{ target.label if target else 'removed model' }} ·
-  test suite v{{ run.suite_version }} ·
+  test suite v{{ run.suite_version }}{% if custom_fingerprint %} <span class="badge-custom">custom {{ custom_fingerprint[:6] }}</span>{% endif %} ·
   {% if run.sample_mode %}<span class="tag">sample</span> not comparable to a full run{% else %}full run{% endif %}
 </p>
 

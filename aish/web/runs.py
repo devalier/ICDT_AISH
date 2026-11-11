@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import judge
+from .. import custom, judge
 from ..config import get_settings
 from ..db import get_session
 from ..models import ModelTarget, Result, Run
@@ -87,6 +87,9 @@ def list_runs(
             "started": _started_runs(db, context, started),
             "suite_names": {s["id"]: f"{s.get('menu_label', s.get('family', ''))} · {s.get('title', s['id'])}"
                             for s in view.suites()},
+            "my_versions": {s["id"]: row for s in view.suites()
+                            if (row := custom.active(db, context.user.id, s["id"])) is not None},
+            "run_fingerprints": {r.id: json.loads(r.manifest_json or "{}").get("fingerprint") for r in runs},
         },
     )
 
@@ -105,17 +108,33 @@ def start_run(
     and settings so their results are directly comparable. Everything is validated before any
     run is created, so a refusal never leaves half a comparison behind."""
     view = current()
+    # "euiba_bias" is the official suite; "euiba_bias:custom" is the user's own version of it.
+    raw_suite_choice = suite_id
+    use_custom = suite_id.endswith(":custom")
+    suite_id = suite_id.removesuffix(":custom")
     suite = view.suite(suite_id)
     chosen = list(dict.fromkeys([*target_ids, *([target_id] if target_id is not None else [])]))
 
     def fail(message: str, status_code: int = 400):
-        response = list_runs(request, db, context, error=message, suite=suite_id, model=chosen,
+        response = list_runs(request, db, context, error=message, suite=raw_suite_choice, model=chosen,
                              started=None)
         response.status_code = status_code
         return response
 
     if suite is None:
         return fail("That suite is not defined.")
+    custom_row = None
+    if use_custom:
+        custom_row = custom.active(db, context.user.id, suite_id)
+        if custom_row is None:
+            return fail("You have no customised version of that suite. Customise it first, or run the official one.")
+        checked, problems = custom.check(suite, custom_row.yaml_text, view)
+        if checked is None:
+            first = next((p for p in problems if p.severity == "error"), None)
+            return fail("Your saved version no longer passes validation: "
+                        f"{first.message if first else 'see the editor'}.")
+        checked["_custom"] = {"id": custom_row.id, "fingerprint": custom_row.fingerprint}
+        suite = checked
     if not chosen:
         return fail("Select at least one model to test.")
     if len(chosen) > MAX_PARALLEL_MODELS:
@@ -138,6 +157,8 @@ def start_run(
         if suite.get("family") == "safety":
             judge.require_configured(restricted=bool(suite.get("restricted")))
         items = build_items(suite, view, sample=sample, seed=DEFAULT_SEED)
+        if suite.get("family") == "bias" and any(i.meta.get("judge_scoring") for i in items):
+            judge.require_configured(restricted=bool(suite.get("restricted")))
     except RunError as exc:
         return fail(str(exc), 409)
 
@@ -157,7 +178,8 @@ def start_run(
             user_id=context.user.id,
             target_id=target.id,
             suite_id=suite_id,
-            suite_version=str(suite.get("version", "")),
+            suite_version=(custom.label(str(suite.get("version", "")), custom_row.fingerprint)
+                           if custom_row else str(suite.get("version", ""))),
             family=str(suite.get("family", "")),
             status="queued",
             sample_mode=sample,
@@ -176,6 +198,8 @@ def start_run(
                     "temperature": run_temperature(suite, sample),
                     "top_p": 1.0,
                     "max_tokens": 1024,
+                    **({"custom_suite_id": custom_row.id, "fingerprint": custom_row.fingerprint}
+                       if custom_row else {}),
                     **({"judge": judge.describe()} if suite.get("family") == "safety" else {}),
                 }
             ),
@@ -184,7 +208,7 @@ def start_run(
         db.flush()
         run_ids.append(run.id)
         audit(db, "run.started", request=request, user_id=context.user.id,
-              detail=f"{suite_id} -> {target.label}")
+              detail=f"{suite_id}{' (custom)' if custom_row else ''} -> {target.label}")
     db.commit()
 
     failed = []
@@ -224,6 +248,7 @@ def run_detail(
     suite = view.suite(run.suite_id) or {}
     summary = json.loads(run.summary_json or "{}")
     manifest = json.loads(run.manifest_json or "{}")
+    custom_fingerprint = manifest.get("fingerprint")
     target = db.get(ModelTarget, run.target_id)
 
     outcome_counts = dict(
@@ -252,6 +277,7 @@ def run_detail(
             "target": target,
             "summary": summary,
             "manifest": manifest,
+            "custom_fingerprint": custom_fingerprint,
             "criteria": view.criteria().get(suite.get("criteria"), {}),
             "outcome_counts": outcome_counts,
             "failures": failures,

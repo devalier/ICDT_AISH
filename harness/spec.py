@@ -47,6 +47,10 @@ SCORERS = (
 
 BIAS_TYPES = ("allocative", "representational", "quality_of_service")
 
+# Optional label for what a bias probe does. A loaded_premise probe presents a stereotype as a
+# fact and measures whether the model challenges or endorses it; it is scored by a judge.
+BIAS_KINDS = ("counterfactual", "name_based", "loaded_premise")
+
 GROUNDING_OUTCOMES = (
     "grounded",
     "hallucinated",

@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from harness.loader import packs_dir
 
-from .. import judge, scoring
+from .. import custom, judge, scoring
 from ..config import data_path, find_data, get_settings
 from ..db import get_session
 from ..models import ModelTarget, Run
@@ -88,15 +88,37 @@ def root(context: AuthContext | None = Depends(optional_user)):
 # --------------------------------------------------------------------------- #
 
 
-def _latest_runs(db: Session, user_id: int) -> dict[tuple[int, str], Run]:
-    """Most recent completed run per (target, suite)."""
+def _active_customs(db: Session, user_id: int) -> dict:
+    """The user's current personal version of each suite, by suite id."""
+    return {s["id"]: row for s in current().suites()
+            if (row := custom.active(db, user_id, s["id"])) is not None}
+
+
+def _harness(value: str | None) -> str:
+    return "mine" if value == "mine" else "official"
+
+
+def _latest_runs(db: Session, user_id: int, harness: str = "official") -> dict[tuple[int, str], Run]:
+    """Most recent completed run per (model, suite), of one harness only.
+
+    ``official`` is the Working Group's suites; ``mine`` is the user's current personal version
+    of each suite. The two are never mixed: a run counts as "mine" only if it used the same
+    fingerprint as the version the user has now."""
     runs = db.scalars(
         select(Run)
         .where(Run.user_id == user_id, Run.status == "done")
         .order_by(Run.finished_at.desc())
     )
+    customs = _active_customs(db, user_id) if harness == "mine" else {}
     latest: dict[tuple[int, str], Run] = {}
     for run in runs:
+        fp = json.loads(run.manifest_json or "{}").get("fingerprint")
+        if harness == "official" and fp:
+            continue
+        if harness == "mine":
+            row = customs.get(run.suite_id)
+            if not fp or row is None or fp != row.fingerprint:
+                continue
         latest.setdefault((run.target_id, run.suite_id), run)
     return latest
 
@@ -119,13 +141,14 @@ def _fmt(value, direction: str) -> str:
     return f"{value * 100:.1f}%" if direction == "lower" else f"{value:.2f}"
 
 
-def _entries(db: Session, user_id: int, family: str, suites: list[dict]) -> list[dict]:
+def _entries(db: Session, user_id: int, family: str, suites: list[dict],
+             harness: str = "official") -> list[dict]:
     """One entry per selected model for an axis, with its latest run if it has one."""
     view = current()
     targets = list(db.scalars(
         select(ModelTarget).where(ModelTarget.user_id == user_id).order_by(ModelTarget.label)
     ))
-    latest = _latest_runs(db, user_id)
+    latest = _latest_runs(db, user_id, harness)
     metric, _, direction = HEADLINE[family]
     out = []
     for target in targets:
@@ -378,11 +401,15 @@ DRILL = {"capability": drill_capability, "safety": drill_safety, "bias": drill_b
          "grounding": drill_grounding}
 
 
-def family_results(db: Session, user_id: int, family: str) -> dict:
+def family_results(db: Session, user_id: int, family: str, harness: str = "official") -> dict:
     view = current()
     suites = [s for s in view.suites() if s.get("family") == family]
+    if harness == "mine":
+        # The breakdown must use the probes and hazards of the version that was run.
+        customs = _active_customs(db, user_id)
+        suites = [custom.load_suite(customs[s["id"]], s) if s["id"] in customs else s for s in suites]
     suite = suites[0] if suites else None
-    entries = _entries(db, user_id, family, suites)
+    entries = _entries(db, user_id, family, suites, harness)
     bands = _bands(view, suite, HEADLINE[family][0])
     return {
         "family": family, "label": FAMILY_LABEL[family], "suite": suite, "entries": entries,
@@ -400,14 +427,19 @@ def family_results(db: Session, user_id: int, family: str) -> dict:
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
+    harness: str | None = None,
     db: Session = Depends(get_session),
     context: AuthContext = Depends(require_user),
 ):
     view = current()
+    harness = _harness(harness)
+    mine = _active_customs(db, context.user.id)
+    if harness == "mine" and not mine:
+        harness = "official"
     targets = list(db.scalars(
         select(ModelTarget).where(ModelTarget.user_id == context.user.id).order_by(ModelTarget.label)
     ))
-    results = {family: family_results(db, context.user.id, family) for family in FAMILIES}
+    results = {family: family_results(db, context.user.id, family, harness) for family in FAMILIES}
 
     # Scorecard: one row per model, one cell per axis.
     scorecard = []
@@ -443,6 +475,8 @@ def dashboard(
             "scorecard": scorecard,
             "pack_problems": view.problems,
             "has_runs": has_runs,
+            "harness": harness,
+            "my_versions": mine,
         },
     )
 
@@ -589,6 +623,9 @@ def _tests_section(suite: dict, view) -> dict:
 def suite_page(
     request: Request,
     suite_id: str,
+    harness: str | None = None,
+    saved: str | None = None,
+    reset: str | None = None,
     db: Session = Depends(get_session),
     context: AuthContext = Depends(require_user),
 ):
@@ -599,12 +636,27 @@ def suite_page(
             request, "not_found.html", {"user": context.user}, status_code=404)
     family = suite.get("family")
     source = {k: v for k, v in suite.items() if not k.startswith("_")}
-    results = family_results(db, context.user.id, family) if family in HEADLINE else None
+    my_row = custom.active(db, context.user.id, suite_id)
+    harness = _harness(harness) if my_row else "official"
+    results = family_results(db, context.user.id, family, harness) if family in HEADLINE else None
+    diff = ""
+    if my_row:
+        import difflib
+        diff = "".join(difflib.unified_diff(
+            custom.official_text(suite).splitlines(keepends=True),
+            my_row.yaml_text.splitlines(keepends=True),
+            "official", "your version", n=2))
+    notice = (f"Saved your version of this suite ({saved}). Run it from Run tests, or compare it below."
+              if saved else "Back to the official suite." if reset is not None else None)
     return templates.TemplateResponse(
         request,
         "suite.html",
         {
             "user": context.user,
+            "notice": notice,
+            "my_row": my_row,
+            "harness": harness,
+            "diff": diff,
             "suite": suite,
             "family": family,
             "family_label": FAMILY_LABEL.get(family, family),
