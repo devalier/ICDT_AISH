@@ -71,8 +71,9 @@ upstream data defects in `ATTRIBUTION.md`. The app uses a copy in its data direc
 
 What the harness does with it:
 - Scores the **test** split only (dev holds few-shot exemplars, validation is for tuning).
-- The 16 locales the dataset card lists are scored; the file also contains `ES_ES`, which the card
-  does not list as released and which has conflicting rows, so it is not.
+- The 16 locales the dataset card lists are scored, plus Spanish: `ES_ES` is not on the card's list, but
+  its defects are repaired and the Working Group decided to include it (26 of 165 history questions
+  are missing, so its parity is computed on the questions it shares with English).
 - The release is partly translated (Irish has 4 of 8 subjects). Parity is computed on the questions
   a language shares with English, matched by `Index`, which is verified to line up.
 - The release has defects (a malformed Hungarian row, German rows in the Portuguese file, Spanish
@@ -90,9 +91,9 @@ python3 scripts/fetch_eu_mmlu.py --from-file path/to/csvs --out datasets/eu_mmlu
 then set `dataset.revision` in `packs/suites/eu_mmlu.yaml` to the commit it prints and bump the suite
 version.
 
-**Run sizes.** A sample run is 2,760 prompts (25 English questions per subject, plus the same
-questions in every other language that has them). A full run is 13,928 prompts, so set
-`AISH_MAX_ITEMS_PER_RUN=14000` first (compose passes it through from `.env`). A run above the limit
+**Run sizes.** A sample run is 2,958 prompts (25 English questions per subject, plus the same
+questions in every other language that has them). A full run is 14,938 prompts, so set
+`AISH_MAX_ITEMS_PER_RUN=15000` first (compose passes it through from `.env`). A run above the limit
 is refused rather than shortened: truncating would drop whole languages and still report a parity
 floor over whatever survived.
 

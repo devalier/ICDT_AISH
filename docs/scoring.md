@@ -26,7 +26,7 @@ here, and every parameter used to produce it is editable in `packs/`.
 | `accuracy` | correct / (total − unparseable), per language × subject |
 | `unparsed_rate` | unparseable / total |
 | `parity[L]` | `accuracy[L] / accuracy[EN]` on the identical item set |
-| `parity_floor` | `min(parity[L])` over the 15 non-English languages |
+| `parity_floor` | `min(parity[L])` over the 16 non-English languages |
 | `parity_spread` | `max(parity[L]) − min(parity[L])` |
 
 `parity_floor` is the headline EUIBA metric. A model that is strong in English and weak in
