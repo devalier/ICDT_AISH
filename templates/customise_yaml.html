@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% set active = 'suite:' ~ suite.id %}
+{% block title %}Edit as text · {{ suite.get('title', suite.id) }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Advanced <span class="muted">· {{ suite.get('title', suite.id) }} as text</span></h1></div>
+  <div class="actions"><a class="button secondary" href="/suites/{{ suite.id }}/customise">Back to the editor</a></div>
+</div>
+<p class="lede">The whole suite as YAML, for changes the forms do not cover. Applying stores it as your draft; check it and save it from the editor.</p>
+{% if error %}<div class="error-box"><strong>Cannot apply</strong>{{ error }}</div>{% endif %}
+{% if problems %}
+  <div class="error-box"><strong>Problems</strong>
+    {% for p in problems %}<div class="small"><span class="mono">{{ p.path or 'file' }}</span>: {{ p.message }}</div>{% endfor %}</div>
+{% elif valid %}<div class="notice"><strong>This is valid.</strong></div>{% endif %}
+<form method="post" action="/suites/{{ suite.id }}/customise/yaml" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <textarea name="yaml_text" rows="32" spellcheck="false" class="code-editor">{{ text }}</textarea>
+  <div class="select-bar">
+    <button type="submit" name="action" value="check" class="secondary">Check</button>
+    <button type="submit" name="action" value="apply">Apply to my draft</button>
+  </div>
+</form>
+{% endblock %}

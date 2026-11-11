@@ -1,77 +1,126 @@
 {% extends "base.html" %}
 {% set active = 'suite:' ~ suite.id %}
 {% block title %}Customise {{ suite.get('title', suite.id) }}{% endblock %}
+
+{% macro field(f, v, uid) %}
+  <div class="field" {% if f.show_when %}data-show-when="{{ f.show_when }}"{% endif %}>
+    <label for="{{ uid }}-{{ f.key }}">{{ f.label }}{% if f.help %} <span class="hint">{{ f.help }}</span>{% endif %}</label>
+    {% set value = v.get(f.key, '') %}
+    {% if f.readonly %}
+      <div class="mono small readonly">{{ value }}</div>
+    {% elif f.kind == 'textarea' %}
+      <textarea id="{{ uid }}-{{ f.key }}" name="f_{{ f.key }}" rows="{{ f.rows }}" spellcheck="false"
+                class="{{ 'code-editor' if f.mono else 'prose-editor' }}">{{ value }}</textarea>
+    {% elif f.kind == 'select' %}
+      <select id="{{ uid }}-{{ f.key }}" name="f_{{ f.key }}">
+        {% for ov, ol in f.options %}<option value="{{ ov }}" {% if ov == value %}selected{% endif %}>{{ ol }}</option>{% endfor %}
+      </select>
+    {% elif f.kind == 'check' %}
+      <input type="checkbox" id="{{ uid }}-{{ f.key }}" name="f_{{ f.key }}" {% if value %}checked{% endif %}>
+    {% elif f.kind == 'multicheck' %}
+      <div class="checks">
+        {% for ov, ol in f.options %}
+          <label class="plain chip"><input type="checkbox" name="f_{{ f.key }}" value="{{ ov }}" {% if ov in value %}checked{% endif %}> {{ ol }}</label>
+        {% endfor %}
+      </div>
+    {% elif f.kind == 'number' %}
+      <input type="number" id="{{ uid }}-{{ f.key }}" name="f_{{ f.key }}" value="{{ value }}" min="1" max="500" class="narrow">
+    {% else %}
+      <input type="text" id="{{ uid }}-{{ f.key }}" name="f_{{ f.key }}" value="{{ value }}" maxlength="400" class="{{ 'mono' if f.mono }}">
+    {% endif %}
+  </div>
+{% endmacro %}
+
 {% block content %}
 
 <div class="page-head">
-  <div>
-    <h1>Customise <span class="muted">· {{ family_label }} · {{ suite.get('title', suite.id) }}</span></h1>
-  </div>
+  <div><h1>Customise <span class="muted">· {{ family_label }} · {{ suite.get('title', suite.id) }}</span></h1></div>
   <div class="actions"><a class="button secondary" href="/suites/{{ suite.id }}">Back to the suite</a></div>
 </div>
 <p class="lede">
-  This is your personal copy of the suite. The official one is not touched. Runs of your version are
-  labelled <span class="tag">custom</span> and are compared only with other runs of the same version.
-  {% if custom_row %}You have a saved version (<span class="mono">{{ custom_row.fingerprint }}</span>).{% endif %}
+  Change the existing tests below. This is your personal copy: the official suite is not touched, and runs of your version
+  are labelled <span class="badge-custom">custom</span> and compared only with the same version.
+  Changes are kept as a draft as you go; <strong>Save as my version</strong> makes them runnable.
 </p>
 
-{% if problems %}
-  {% set errs = problems|selectattr('severity', 'equalto', 'error')|list %}
-  {% set warns = problems|rejectattr('severity', 'equalto', 'error')|list %}
-  {% if errs %}
-    <div class="error-box"><strong>{{ errs|length }} problem{{ 's' if errs|length != 1 }} to fix before this can be saved</strong>
-      {% for p in errs %}<div class="small"><span class="mono">{{ p.path or 'file' }}</span>: {{ p.message }}</div>{% endfor %}</div>
-  {% endif %}
-  {% if warns %}
-    <div class="notice"><strong>Worth a look</strong>
-      {% for p in warns %}<div class="small"><span class="mono">{{ p.path or 'file' }}</span>: {{ p.message }}</div>{% endfor %}</div>
-  {% endif %}
-{% endif %}
-{% if valid and not (problems|selectattr('severity', 'equalto', 'error')|list) %}
-  <div class="notice"><strong>This is valid.</strong> You can preview it, try it on a model, or save it.</div>
+{% if parse_error %}
+  <div class="error-box"><strong>The draft cannot be read</strong>{{ parse_error }}
+    <a href="/suites/{{ suite.id }}/customise/yaml">Fix it as text</a> or discard the draft below.</div>
 {% endif %}
 
-<form method="post" action="/suites/{{ suite.id }}/customise" class="stack" data-editor>
+<form method="post" action="/suites/{{ suite.id }}/customise/draft" class="toolbar">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label for="yaml_text">The suite, as YAML
-    <span class="hint">Edit the text below. Indentation matters. You cannot change the suite's id, scorer, dataset or restricted setting.</span></label>
-  <textarea id="yaml_text" name="yaml_text" rows="30" spellcheck="false" class="code-editor" data-yaml-editor>{{ text }}</textarea>
-
-  <div class="select-bar">
-    <button type="submit" name="action" value="check" class="secondary">Check</button>
-    <button type="submit" name="action" value="preview" class="secondary">Preview prompts</button>
-    <span class="try-group">
-      <select name="target_id" aria-label="Model to try on">
-        <option value="">Try on a model…</option>
-        {% for t in targets %}<option value="{{ t.id }}" {% if chosen_target == t.id %}selected{% endif %}>{{ t.label }}</option>{% endfor %}
-      </select>
-      <button type="submit" name="action" value="try" class="secondary">Try (up to 6 prompts)</button>
-    </span>
-  </div>
-  <div class="select-bar">
-    <input type="text" name="note" maxlength="200" placeholder="What did you change? (optional)" aria-label="Note about this version" class="note-input">
-    <button type="submit" name="action" value="save">Save as my version</button>
-    <button type="submit" name="action" value="official" class="secondary" title="Replace the text above with the official suite (not saved until you save)">Start again from official</button>
-    {% if custom_row %}
-      <button type="submit" name="action" value="reset" class="danger"
-              data-confirm="Go back to the official suite? Your saved version stays in your run history but is no longer used.">Reset to official</button>
-    {% endif %}
-  </div>
+  <span class="state {{ 'state-bad' if error_count else 'state-ok' }}">
+    {% if error_count %}✕ {{ error_count }} problem{{ 's' if error_count != 1 }} to fix{% elif unsaved %}● Unsaved changes{% elif custom_row %}✓ Saved ({{ custom_row.fingerprint[:6] }}){% else %}✓ Same as official{% endif %}
+  </span>
+  <button type="submit" name="action" value="preview" class="secondary">Preview prompts</button>
+  <span class="try-group">
+    <select name="target_id" aria-label="Model to try on">
+      <option value="">Try on a model…</option>
+      {% for t in targets %}<option value="{{ t.id }}" {% if chosen_target == t.id %}selected{% endif %}>{{ t.label }}</option>{% endfor %}
+    </select>
+    <button type="submit" name="action" value="try" class="secondary">Try</button>
+  </span>
+  <input type="text" name="note" maxlength="200" placeholder="What did you change? (optional)" aria-label="Note about this version" class="note-input">
+  <button type="submit" name="action" value="save">Save as my version</button>
+  {% if unsaved or parse_error %}<button type="submit" name="action" value="discard" class="secondary" data-confirm="Throw away your unsaved changes?">Discard changes</button>{% endif %}
+  {% if custom_row %}<button type="submit" name="action" value="reset" class="danger" data-confirm="Go back to the official suite? Your saved version stays in your run history but is no longer used.">Reset to official</button>{% endif %}
 </form>
 
-{% if examples %}
-<div class="card">
-  <h2>Starter examples</h2>
-  <p class="muted small">Each is inserted into the right place in the text above. Edit it, then Check.</p>
-  {% for ex in examples %}
-    <details class="example">
-      <summary><strong>{{ ex.title }}</strong> <span class="muted small">{{ ex.blurb }}</span></summary>
-      <pre class="source" id="ex-{{ ex.id }}">{{ ex.yaml }}</pre>
-      <button type="button" class="secondary small" data-insert-from="ex-{{ ex.id }}" data-insert-before="{{ ex.before }}">Insert into the editor</button>
-    </details>
-  {% endfor %}
-</div>
+{% if general_problems %}
+  <div class="error-box"><strong>Suite-wide</strong>
+    {% for p in general_problems %}<div class="small"><span class="mono">{{ p.path or 'file' }}</span>: {{ p.message }}</div>{% endfor %}</div>
 {% endif %}
+
+{% for block in blocks %}
+  {% set sec = block.section %}
+  <h2>{{ sec.title }}{% if not sec.single %} <span class="count">{{ block['items']|length }}</span>{% endif %}</h2>
+  <p class="muted small">{{ sec.blurb }}</p>
+
+  {% for item in block['items'] %}
+    {% set uid = 't-' ~ sec.key ~ '-' ~ item.index %}
+    {% macro item_form() %}
+      <form method="post" action="/suites/{{ suite.id }}/customise/item" data-mode-form class="stack item-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="section" value="{{ sec.key }}">
+        <input type="hidden" name="index" value="{{ item.index }}">
+        {% for f in sec.fields %}{{ field(f, item['values'], uid) }}{% endfor %}
+        {% for p in item.problems %}
+          <div class="problem {{ 'problem-warn' if p.severity != 'error' else '' }}"><span class="mono">{{ p.path.split('.', 1)[-1] if '.' in p.path else p.path }}</span>: {{ p.message }}</div>
+        {% endfor %}
+        {% if item.note %}<p class="muted small">{{ item.note }}</p>{% endif %}
+        <div class="select-bar">
+          <button type="submit" name="op" value="save" class="small">Save this {{ 'test' if not sec.single else 'section' }}</button>
+          {% if sec.duplicable %}<button type="submit" name="op" value="duplicate" class="secondary small">Duplicate</button>{% endif %}
+          {% if sec.deletable %}<button type="submit" name="op" value="delete" class="danger small" data-confirm="Delete this test from your version?">Delete</button>{% endif %}
+        </div>
+      </form>
+    {% endmacro %}
+    {% if sec.single %}
+      <div class="card">{{ item_form() }}</div>
+    {% else %}
+      <details class="item {{ 'item-bad' if item.problems|selectattr('severity', 'equalto', 'error')|list }}" id="{{ uid }}" {% if item.open %}open{% endif %}>
+        <summary>
+          <strong class="mono">{{ item.title }}</strong>
+          <span class="muted small">{{ item.subtitle }}</span>
+          {% set errs = item.problems|selectattr('severity', 'equalto', 'error')|list %}
+          {% if errs %}<span class="status status-bad small">✕ {{ errs|length }} problem{{ 's' if errs|length != 1 }}</span>{% endif %}
+        </summary>
+        {{ item_form() }}
+      </details>
+    {% endif %}
+  {% endfor %}
+
+  {% if sec.addable %}
+    <form method="post" action="/suites/{{ suite.id }}/customise/item" class="add-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="section" value="{{ sec.key }}">
+      <button type="submit" name="op" value="add" class="secondary small">＋ Add a test</button>
+    </form>
+  {% endif %}
+{% endfor %}
+
+<p class="muted small"><a href="/suites/{{ suite.id }}/customise/yaml">Advanced: edit the whole suite as text</a></p>
 
 {% if preview %}
 <div class="card">
@@ -91,7 +140,7 @@
 {% if tried %}
 <div class="card">
   <h2>Tried on a model</h2>
-  <p class="muted small">Up to 6 prompts, one per group. This is a quick look to tune wording and rubrics, not a result: it is not stored and does not count.</p>
+  <p class="muted small">Up to 6 prompts, one per group. A quick look to tune wording and rubrics, not a result: it is not stored and does not count.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>Group</th><th>Prompt</th><th>Response</th><th>Scored as</th></tr></thead>
     <tbody>

@@ -127,27 +127,33 @@ come from human reviewers and are not in this repository. Scores are always labe
 Any signed-in user can keep a personal copy of any of the four suites (Language, Safety, Bias,
 Grounding) and change it: open the suite and press **Customise**. The official suite is never touched.
 
-1. Edit the suite's YAML (it opens on the official text).
-2. **Check** gives plain-language problems; **Preview prompts** shows what would be sent;
-   **Try** sends up to 6 of its prompts to one of your models and shows how each was scored, so you can
-   tune wording and rubrics before spending a run.
-3. **Save as my version.** It then appears on the Run page as "MY VERSION", labelled *custom* with a
-   fingerprint. Runs of your version are charted separately ("My versions" on Compare models) and are
-   never mixed with official results or with an older version of your own.
+The editor lists the **actual existing tests** of that suite, each with a form:
 
-What you can change: the prompts, probes, items, hazard definitions, languages and prompt template.
-What you cannot: the suite id, scorer, dataset source, thresholds, the judge, or the `restricted`
-setting. A customised copy of a restricted suite stays restricted. Nothing is code: it is YAML, parsed
-safely (no anchors, size-limited), checked by the same validator as the official files.
+| Suite | What you can edit |
+|---|---|
+| **Bias** | each probe: the prompt, who the groups are (a standard list, your own list, or names that imply each group), how a reply is scored (decision words, or a judge model with a rubric you write), the headline measure. Add, duplicate or delete probes |
+| **Grounding** | each question: the question, a supplied text (from the library, or written inline), the accepted answers, whether to check citations. Add, duplicate or delete |
+| **Safety** | the definition of "unsafe" for each hazard (what the judge sees), the benign control prompts, the injection and extraction probes. The MLCommons prompts are restricted and are not shown or editable |
+| **Language** | the prompt template around each question, which languages are tested, the sample size. The questions come from EU-MMLU and are fixed |
 
-New in the Bias suite, written entirely in YAML:
-- **Name-based probes** (`pools:`): the group is never stated; each group has a pool of names and
-  replicates use different names. Use 5 or more names per group.
-- **Loaded-premise probes** (`kind: loaded_premise`, `scoring: {method: judge}`): a stereotype is stated
-  as fact and a judge model, using a rubric you write, labels the response `CHALLENGES`, `ENDORSES` or
-  `NEUTRAL`. The disparity across groups is how unevenly the model pushes back. Bias suites are not
-  restricted, so the judge may be a cloud model (`AISH_JUDGE_*`); a restricted suite still needs an
-  on-prem judge.
+Changes are kept as a draft as you go. **Preview prompts** shows what would be sent; **Try** sends up to
+6 of the prompts to one of your models and shows how each was scored (not stored), so you can tune a
+rubric before spending a run; **Save as my version** makes it runnable. It then appears on the Run page
+as "MY VERSION", labelled *custom* with a fingerprint. Runs of your version are charted separately
+("My versions" on Compare models) and never mixed with official results or with an older version of your own.
+Anything the forms do not cover can be edited under **Advanced: edit the whole suite as text**.
+
+What you cannot change: the suite id, scorer, dataset source, thresholds, the judge, or the `restricted`
+setting. A copy of a restricted suite stays restricted. Nothing is code: it is YAML, parsed safely
+(no anchors, size-limited), and checked by the same validator as the official files.
+
+Two Bias probe types are available through those forms, and in YAML:
+- **Names** (`pools:`): the group is never stated; each group has a pool of names and replicates use
+  different names. Use 5 or more names per group.
+- **Loaded premise** (`kind: loaded_premise`, `scoring: {method: judge}`): a stereotype is stated as fact
+  and a judge model, using your rubric, labels the response `CHALLENGES`, `ENDORSES` or `NEUTRAL`. The
+  disparity across groups is how unevenly the model pushes back. Bias suites are not restricted, so the
+  judge may be a cloud model (`AISH_JUDGE_*`); a restricted suite still needs an on-prem judge.
 
 To share a version upstream, send a pull request with the YAML. Official suites change only through
 the Working Group's review.

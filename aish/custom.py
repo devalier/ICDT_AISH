@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from harness.loader import Packs, packs_dir
 from harness.validate import Problem, validate
 
-from .models import CustomSuite, utcnow
+from .models import CustomDraft, CustomSuite, utcnow
 
 MAX_BYTES = 200_000
 
@@ -153,3 +153,54 @@ def load_suite(row: CustomSuite, base: dict) -> dict:
 
 def label(suite_version: str, fp: str) -> str:
     return f"{suite_version}+custom.{fp[:6]}"
+
+
+# ---- drafts ------------------------------------------------------------------------------ #
+
+
+def get_draft(db: Session, user_id: int, base_suite_id: str) -> CustomDraft | None:
+    return db.scalar(select(CustomDraft).where(
+        CustomDraft.user_id == user_id, CustomDraft.base_suite_id == base_suite_id))
+
+
+def put_draft(db: Session, user_id: int, base_suite_id: str, text: str) -> CustomDraft:
+    if len(text.encode("utf-8")) > MAX_BYTES:
+        raise CustomError(f"The suite is larger than {MAX_BYTES // 1000} KB.")
+    draft = get_draft(db, user_id, base_suite_id)
+    if draft is None:
+        draft = CustomDraft(user_id=user_id, base_suite_id=base_suite_id, yaml_text=text)
+        db.add(draft)
+    else:
+        draft.yaml_text = text
+        draft.updated_at = utcnow()
+    db.flush()
+    return draft
+
+
+def discard_draft(db: Session, user_id: int, base_suite_id: str) -> None:
+    draft = get_draft(db, user_id, base_suite_id)
+    if draft is not None:
+        db.delete(draft)
+
+
+def working_text(db: Session, user_id: int, base: dict) -> str:
+    """What the editor shows: the draft if there is one, else the user's saved version, else the
+    official suite."""
+    draft = get_draft(db, user_id, base["id"])
+    if draft is not None:
+        return draft.yaml_text
+    saved = active(db, user_id, base["id"])
+    return saved.yaml_text if saved is not None else official_text(base)
+
+
+def has_unsaved_changes(db: Session, user_id: int, base: dict) -> bool:
+    """True if the draft means something different from what is saved (or official)."""
+    draft = get_draft(db, user_id, base["id"])
+    if draft is None:
+        return False
+    saved = active(db, user_id, base["id"])
+    reference = saved.yaml_text if saved is not None else official_text(base)
+    try:
+        return fingerprint(parse_yaml(draft.yaml_text)) != fingerprint(parse_yaml(reference))
+    except CustomError:
+        return True

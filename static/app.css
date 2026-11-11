@@ -479,3 +479,30 @@ a.seg-link { display: inline-block; padding: 2px 10px; border: 1px solid var(--a
   text-decoration: none; color: var(--ink-2); font-size: 12.5px; }
 a.seg-link.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 pre.diff { max-height: 420px; overflow: auto; }
+
+/* ----------------------------------------------------- structured editor */
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0 10px; position: sticky; top: 0; z-index: 3;
+  background: var(--page); border-bottom: 1px solid var(--rule); margin-bottom: 6px; }
+.state { font-weight: 700; font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--surface-sunken); border: 1px solid var(--rule); }
+.state-ok { color: var(--ink); }
+.state-bad { color: var(--critical); border-color: var(--critical); }
+details.item { border: 1px solid var(--rule); border-radius: 8px; margin: 6px 0; background: var(--surface); }
+details.item > summary { padding: 8px 12px; cursor: pointer; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+details.item[open] > summary { border-bottom: 1px solid var(--rule); background: var(--surface-sunken); border-radius: 8px 8px 0 0; }
+details.item-bad { border-color: var(--critical); }
+form.item-form { padding: 10px 14px 12px; }
+.field { display: block; }
+.field label { margin-bottom: 3px; }
+.field .hint { display: inline; margin-left: 6px; }
+.field[hidden] { display: none; }
+.readonly { padding: 4px 0; color: var(--ink-2); }
+textarea.prose-editor { width: 100%; font: inherit; font-size: 13.5px; background: var(--page); color: var(--ink); border: 1px solid var(--axis); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+textarea.code-editor { white-space: pre-wrap; }
+input.narrow { width: 110px; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--axis); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; }
+.problem { border-left: 3px solid var(--critical); background: var(--tint-fail); padding: 4px 10px; font-size: 13px; border-radius: 0 6px 6px 0; }
+.problem-warn { border-left-color: var(--warning); background: var(--tint-watch); }
+.add-form { margin: 8px 0 14px; }
+details.item { scroll-margin-top: 96px; }

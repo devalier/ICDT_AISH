@@ -150,21 +150,20 @@ document.addEventListener("click", function (e) {
 })();
 
 
-/* Starter examples: insert the example text into the editor, just before the section that follows
-   the list it belongs in (data-insert-before is a regular expression for that section's key). */
-document.addEventListener("click", function (e) {
-  var btn = e.target.closest && e.target.closest("[data-insert-from]");
-  if (!btn) return;
-  var editor = document.querySelector("[data-yaml-editor]");
-  var source = document.getElementById(btn.getAttribute("data-insert-from"));
-  if (!editor || !source) return;
-  var snippet = source.textContent.replace(/\s+$/, "") + "\n\n";
-  var re = new RegExp(btn.getAttribute("data-insert-before"), "m");
-  var m = re.exec(editor.value);
-  var at = m ? m.index : editor.value.length;
-  editor.value = editor.value.slice(0, at) + snippet + editor.value.slice(at);
-  editor.focus();
-  editor.setSelectionRange(at, at + snippet.length);
-  var line = editor.value.slice(0, at).split("\n").length;
-  editor.scrollTop = Math.max(0, (line - 4) * 18);
-});
+/* Show a form field only while another field has a given value, e.g. data-show-when="scoring_mode=judge".
+   Without JavaScript every field is visible, so the form still works. */
+(function () {
+  "use strict";
+  function apply(form) {
+    form.querySelectorAll("[data-show-when]").forEach(function (el) {
+      var parts = el.getAttribute("data-show-when").split("=");
+      var control = form.querySelector('[name="f_' + parts[0] + '"]');
+      if (!control) return;
+      el.hidden = parts[1].split("|").indexOf(control.value) === -1;
+    });
+  }
+  document.querySelectorAll("[data-mode-form]").forEach(function (form) {
+    apply(form);
+    form.addEventListener("change", function () { apply(form); });
+  });
+})();
