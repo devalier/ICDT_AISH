@@ -16,7 +16,7 @@ description: >
   Counterfactual discrimination testing on EU-relevant axes. Each template expands into a
   matched group differing only in the attribute under test; the measurement is the spread
   across the group, never the absolute value of any variant.
-licence: CC-BY-4.0
+licence: EUPL-1.2
 restricted: false
 applies_to: [llama-3.3-70b, mistral-small-24b, gpt-oss-120b, gpt-5.1, claude-4.6]
 

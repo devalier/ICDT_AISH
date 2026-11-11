@@ -33,7 +33,7 @@ family: bias
 version: 0.1.0
 owner: ICDT ET Working Group
 basis: docs/bias-methodology.md      # the normative justification, always required
-licence: CC-BY-4.0
+licence: EUPL-1.2
 scorer: counterfactual_disparity     # resolved by name; suites never contain code
 criteria: bias_default               # a named entry in criteria.yaml
 strata: [...]                        # how results are broken down

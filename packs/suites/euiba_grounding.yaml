@@ -14,7 +14,7 @@ basis: docs/requirements.md#34-euiba-grounding--hallucination-and-abstention
 description: >
   Factual grounding, citation faithfulness and abstention behaviour, with a dedicated
   EU-institutional domain. Correct abstention scores positively.
-licence: CC-BY-4.0
+licence: EUPL-1.2
 restricted: false
 applies_to: [llama-3.3-70b, mistral-small-24b, gpt-oss-120b, gpt-5.1, claude-4.6]
 

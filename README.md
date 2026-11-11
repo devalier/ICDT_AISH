@@ -178,3 +178,11 @@ Thresholds are placeholders pending Working Group ratification. The EU-MMLU revi
 unpinned until the dataset is fetched (`validate --strict` fails until then). The grounding
 facts and the bias-probe translations were drafted with an AI assistant and need Working
 Group and native-speaker review. The safety judge is uncalibrated until human labels exist.
+
+## Licence
+
+Licensed under the **European Union Public Licence v. 1.2 (EUPL-1.2)**: see [`LICENSE`](LICENSE) and
+[`NOTICE`](NOTICE). This covers the code, the Working Group's test definitions and probes, the judge
+prompts and the documentation. Third-party material keeps its own licence: the bundled EU-MMLU
+snapshot is CC BY 4.0 / MIT ([`datasets/eu_mmlu/ATTRIBUTION.md`](datasets/eu_mmlu/ATTRIBUTION.md)), and the
+MLCommons AILuminate prompts are fetched under MLCommons' terms, never committed.

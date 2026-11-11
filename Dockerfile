@@ -1,6 +1,8 @@
 # EUIBA AI Safety Harness — production image.
 # Build: docker build -t aish:latest .
 FROM python:3.13-slim AS base
+LABEL org.opencontainers.image.licenses="EUPL-1.2" \
+      org.opencontainers.image.source="https://github.com/devalier/ICDT_AISH"
 
 # Fail fast, no .pyc, unbuffered logs.
 ENV PYTHONDONTWRITEBYTECODE=1 \
