@@ -25,8 +25,8 @@ The sidebar is a workflow followed by the test harness:
 
 | Section | Page | What it is for |
 |---|---|---|
-| **Workflow** | 1 · Models Selected for Benchmarking | Add a model for benchmarking — provider, endpoint, your own API key. Test the connection before spending a run on it |
-| | 2 · Run tests | Start a test suite against a model, watch progress, read results |
+| **Workflow** | 1 · Models Selected for Benchmarking | Add a model for benchmarking — provider, endpoint, your own API key. Test the connection, change a key or remove a model inline, and tick up to 3 models to run together |
+| | 2 · Run tests | Start a test suite against up to 3 models at once (tick them here or on the models page); each runs in parallel on the same prompts, so results are directly comparable |
 | | 3 · Compare models | Scorecard (every model × every axis), one ranked chart per axis against the pass/watch/fail zones, and per-language / per-hazard / per-probe / per-outcome breakdowns. Every number links to the run and its prompts and responses |
 | **Test harness** | Methodology | Every metric definition, threshold, weight, lexicon and judge, rendered from the live files; how the Working Group edits the tests; validation status |
 | | Test suites → Language, Safety, Bias, Grounding | One page per suite: readiness checklist, basis, the actual tests, thresholds, results, changelog and the YAML as it stands on disk |

@@ -6,7 +6,7 @@
 
 <h1>Runs</h1>
 <p class="lede">
-  A run tests one model with one test suite. The same settings always send the same prompts.
+  Each run tests one model with one test suite, and the same settings always send the same prompts. Select up to 3 models to run them in parallel and compare.
 </p>
 
 <div class="card">
@@ -14,37 +14,54 @@
   {% if not targets %}
     <p>You have no models selected for benchmarking yet. <a href="/models">Add one first.</a></p>
   {% else %}
-    <form method="post" action="/runs" class="form-row">
+    <form method="post" action="/runs" class="stack" data-select-form>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <div>
-        <label for="suite_id">Test suite</label>
-        <select id="suite_id" name="suite_id" required>
-          {% for suite in suites %}
-            <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (v{{ suite.version }})</option>
-          {% endfor %}
-        </select>
+      <div class="form-row">
+        <div>
+          <label for="suite_id">Test suite</label>
+          <select id="suite_id" name="suite_id" required>
+            {% for suite in suites %}
+              <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (v{{ suite.version }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="mode">Mode</label>
+          <select id="mode" name="mode">
+            <option value="sample">Sample — cheap, not comparable to a full run</option>
+            <option value="full">Full</option>
+          </select>
+        </div>
       </div>
-      <div>
-        <label for="target_id">Model</label>
-        <select id="target_id" name="target_id" required>
-          {% for target in targets %}
-            <option value="{{ target.id }}">{{ target.label }}</option>
-          {% endfor %}
-        </select>
+      <fieldset class="model-picker">
+        <legend>Models <span class="hint">Select up to 3. They run in parallel on the same prompts, so the results are directly comparable.</span></legend>
+        {% for target in targets %}
+          <label class="pick plain" for="m-{{ target.id }}">
+            <input type="checkbox" id="m-{{ target.id }}" name="target_ids" value="{{ target.id }}" data-max-select="3"
+                   {% if target.id in selected_models %}checked{% endif %}>
+            <span><strong>{{ target.label }}</strong> <span class="mono small muted">{{ target.model_name }}</span>
+              {% if target.last_checked_at and not target.last_check_ok %}<span class="status status-bad small">✕ last check failed</span>{% endif %}
+            </span>
+          </label>
+        {% endfor %}
+      </fieldset>
+      <div class="select-bar">
+        <button type="submit" data-run-selected disabled>Run</button>
+        <span class="muted small" data-select-status role="status">Select 1 to 3 models.</span>
       </div>
-      <div>
-        <label for="mode">Mode</label>
-        <select id="mode" name="mode">
-          <option value="sample">Sample — cheap, not comparable to a full run</option>
-          <option value="full">Full</option>
-        </select>
-      </div>
-      <div><button type="submit">Run</button></div>
     </form>
   {% endif %}
 </div>
 
-<div class="card">
+{% if started %}
+  <div class="notice">
+    <strong>Started {{ started|length }} run{{ 's' if started|length != 1 }} in parallel</strong>
+    {% for item in started %}<a href="/runs/{{ item.id }}">{{ item.label }}</a>{{ ', ' if not loop.last }}{% endfor %}.
+    When they finish, open <a href="/dashboard">Compare models</a>.
+  </div>
+{% endif %}
+
+<div class="card"{% if runs|selectattr('status', 'in', ['queued', 'running'])|list %} data-autorefresh="4000"{% endif %}>
   <h2>History</h2>
   {% if not runs %}
     <p class="muted">No runs yet.</p>

@@ -10,18 +10,42 @@
   {% if not targets %}
     <p class="muted">None yet. Add a model below to run tests against it.</p>
   {% else %}
+  <p class="muted small">
+    To compare models, tick <strong>up to 3</strong> and run the same test suite on all of them at once.
+  </p>
+  <form method="get" action="/runs" id="select-form" data-select-form></form>
   <div class="table-scroll">
     <table class="models">
       <thead>
-        <tr><th>Model</th><th>Provider</th><th>Endpoint</th><th>Key</th><th>Connection</th><th></th></tr>
+        <tr><th class="check-col"><span class="visually-hidden">Select</span></th><th>Model</th><th>Provider</th><th>Endpoint</th><th>Key</th><th>Connection</th><th></th></tr>
       </thead>
       <tbody>
       {% for target in targets %}
         <tr>
+          <td class="check-col">
+            <input type="checkbox" name="model" value="{{ target.id }}" form="select-form" data-max-select="3"
+                   id="pick-{{ target.id }}" aria-label="Select {{ target.label }} for a comparison run">
+          </td>
           <td>
-            <strong>{{ target.label }}</strong>
+            <label for="pick-{{ target.id }}" class="plain"><strong>{{ target.label }}</strong></label>
             <div class="cell-meta mono">{{ target.model_name }}</div>
             {% if target.fleet_model_id %}<div class="cell-meta">Fleet: {{ target.fleet_model_id }}</div>{% endif %}
+            <details class="inline-edit">
+              <summary>Change API key or remove</summary>
+              <form method="post" action="/models/{{ target.id }}/key" autocomplete="off" class="stack tight">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <label for="key-{{ target.id }}">New API key <span class="hint">Leave blank to remove the stored key.</span></label>
+                <div class="input-row">
+                  <input id="key-{{ target.id }}" name="api_key" type="password" autocomplete="new-password" maxlength="500" placeholder="Paste the new key">
+                  <button type="submit" class="secondary small">Save key</button>
+                </div>
+              </form>
+              <form method="post" action="/models/{{ target.id }}/delete" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="danger small"
+                        data-confirm="Remove {{ target.label }} and all of its test runs? This cannot be undone.">Remove model and its runs</button>
+              </form>
+            </details>
           </td>
           <td class="small">{{ providers[target.provider].label if target.provider in providers else target.provider }}</td>
           <td class="small mono">{{ target.endpoint or '—' }}</td>
@@ -30,6 +54,7 @@
             {% if target.last_checked_at %}
               <span class="status {{ 'status-ok' if target.last_check_ok else 'status-bad' }}">{{ '✓ Reachable' if target.last_check_ok else '✕ Failed' }}</span>
               <div class="cell-meta" title="{{ target.last_check_message }}">{{ target.last_checked_at|when }}</div>
+              {% if not target.last_check_ok %}<div class="cell-meta">Check the API key and model id.</div>{% endif %}
             {% else %}
               <span class="muted">Never checked</span>
             {% endif %}
@@ -37,31 +62,18 @@
           <td class="actions">
             <form method="post" action="/models/{{ target.id }}/check" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" class="secondary small">Test</button>
+              <button type="submit" class="secondary small">Test connection</button>
             </form>
-            <details class="menu">
-              <summary class="button secondary small">More</summary>
-              <div class="menu-body">
-                <form method="post" action="/models/{{ target.id }}/key" autocomplete="off" class="stack tight">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                  <label for="key-{{ target.id }}">Replace API key</label>
-                  <input id="key-{{ target.id }}" name="api_key" type="password"
-                         autocomplete="new-password" maxlength="500" placeholder="New key, or blank to remove">
-                  <button type="submit" class="secondary small">Update key</button>
-                </form>
-                <form method="post" action="/models/{{ target.id }}/delete" class="inline-form">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                  <button type="submit" class="danger small">Remove model and its runs</button>
-                </form>
-              </div>
-            </details>
           </td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
-  <p class="small"><a class="button" href="/runs">Next: run tests →</a></p>
+  <div class="select-bar">
+    <button type="submit" form="select-form" data-run-selected disabled>Run tests on selected models →</button>
+    <span class="muted small" data-select-status role="status">Select 1 to 3 models.</span>
+  </div>
   {% endif %}
 </div>
 

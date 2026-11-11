@@ -434,14 +434,21 @@ td.actions > * { display: inline-block; vertical-align: middle; }
 .status { font-weight: 600; }
 .status-ok { color: var(--good); }
 .status-bad { color: var(--critical); }
-details.menu { position: relative; }
-details.menu > summary { list-style: none; cursor: pointer; }
-details.menu > summary::-webkit-details-marker { display: none; }
-.menu-body {
-  position: absolute; right: 0; z-index: 5; margin-top: 4px; min-width: 270px; text-align: left;
-  background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 10px 12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,.14); display: flex; flex-direction: column; gap: 10px;
-}
+details.inline-edit { margin-top: 4px; font-size: 12.5px; }
+details.inline-edit > summary { color: var(--accent-ink); }
+details.inline-edit[open] { padding: 8px 10px; background: var(--surface-sunken); border: 1px solid var(--rule); border-radius: 8px; }
+details.inline-edit form { margin-bottom: 8px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+label.plain { display: inline; font-size: inherit; font-weight: inherit; margin: 0; cursor: pointer; }
+td.check-col, th.check-col { width: 28px; text-align: center; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .45; }
+.select-bar { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.select-bar button:disabled { opacity: .5; cursor: not-allowed; }
+fieldset.model-picker { border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; margin: 0; }
+fieldset.model-picker legend { font-weight: 600; font-size: 13px; padding: 0 6px; }
+fieldset.model-picker legend .hint { font-weight: 400; }
+fieldset.model-picker .pick { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
 
 /* ------------------------------------------------------- compact headers */
 
