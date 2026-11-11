@@ -47,9 +47,10 @@ class ShippedPacksTest(unittest.TestCase):
             self.packs.model_ids,
         )
 
-    def test_eu_mmlu_covers_the_sixteen_released_languages(self):
+    def test_eu_mmlu_covers_the_released_languages_and_spanish(self):
         suite = self.packs.suites["suites/eu_mmlu.yaml"]
-        self.assertEqual(16, len(suite["languages"]))
+        self.assertEqual(17, len(suite["languages"]))
+        self.assertIn("es", suite["languages"])
         self.assertIn("en", suite["languages"])
         self.assertEqual("en", suite["reference_language"])
 

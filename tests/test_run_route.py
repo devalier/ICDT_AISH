@@ -153,4 +153,4 @@ def test_a_run_cannot_be_started_against_another_users_target(client, register, 
             follow_redirects=False,
         )
         assert response.status_code == 400
-        assert "one of your own models" in response.text
+        assert "your own models" in response.text

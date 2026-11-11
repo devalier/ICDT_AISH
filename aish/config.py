@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = 120.0
     max_concurrent_requests: int = 4
     # Must exceed the largest run the instance is expected to accept. Sampled
-    # EU-MMLU alone is 2,760 prompts; a full run is 13,928 (test split, 16 languages). A run that would exceed this is refused, never silently shortened.
+    # EU-MMLU alone is 2,958 prompts; a full run is 14,938 (test split, 17 languages). A run that would exceed this is refused, never silently shortened.
     max_items_per_run: int = 5000
 
     # LLM judge for safety suites (REQ-AIL-03/04). Deployment config, not pack content.

@@ -25,8 +25,8 @@ The sidebar is a workflow followed by the test harness:
 
 | Section | Page | What it is for |
 |---|---|---|
-| **Workflow** | 1 · Models Selected for Benchmarking | Add a model for benchmarking — provider, endpoint, your own API key. Test the connection before spending a run on it |
-| | 2 · Run tests | Start a test suite against a model, watch progress, read results |
+| **Workflow** | 1 · Models Selected for Benchmarking | Add a model for benchmarking — provider, endpoint, your own API key. Test the connection, change a key or remove a model inline, and tick up to 3 models to run together |
+| | 2 · Run tests | Start a test suite against up to 3 models at once (tick them here or on the models page); each runs in parallel on the same prompts, so results are directly comparable |
 | | 3 · Compare models | Scorecard (every model × every axis), one ranked chart per axis against the pass/watch/fail zones, and per-language / per-hazard / per-probe / per-outcome breakdowns. Every number links to the run and its prompts and responses |
 | **Test harness** | Methodology | Every metric definition, threshold, weight, lexicon and judge, rendered from the live files; how the Working Group edits the tests; validation status |
 | | Test suites → Language, Safety, Bias, Grounding | One page per suite: readiness checklist, basis, the actual tests, thresholds, results, changelog and the YAML as it stands on disk |
@@ -71,8 +71,9 @@ upstream data defects in `ATTRIBUTION.md`. The app uses a copy in its data direc
 
 What the harness does with it:
 - Scores the **test** split only (dev holds few-shot exemplars, validation is for tuning).
-- The 16 locales the dataset card lists are scored; the file also contains `ES_ES`, which the card
-  does not list as released and which has conflicting rows, so it is not.
+- The 16 locales the dataset card lists are scored, plus Spanish: `ES_ES` is not on the card's list, but
+  its defects are repaired and the Working Group decided to include it (26 of 165 history questions
+  are missing, so its parity is computed on the questions it shares with English).
 - The release is partly translated (Irish has 4 of 8 subjects). Parity is computed on the questions
   a language shares with English, matched by `Index`, which is verified to line up.
 - The release has defects (a malformed Hungarian row, German rows in the Portuguese file, Spanish
@@ -90,9 +91,9 @@ python3 scripts/fetch_eu_mmlu.py --from-file path/to/csvs --out datasets/eu_mmlu
 then set `dataset.revision` in `packs/suites/eu_mmlu.yaml` to the commit it prints and bump the suite
 version.
 
-**Run sizes.** A sample run is 2,760 prompts (25 English questions per subject, plus the same
-questions in every other language that has them). A full run is 13,928 prompts, so set
-`AISH_MAX_ITEMS_PER_RUN=14000` first (compose passes it through from `.env`). A run above the limit
+**Run sizes.** A sample run is 2,958 prompts (25 English questions per subject, plus the same
+questions in every other language that has them). A full run is 14,938 prompts, so set
+`AISH_MAX_ITEMS_PER_RUN=15000` first (compose passes it through from `.env`). A run above the limit
 is refused rather than shortened: truncating would drop whole languages and still report a parity
 floor over whatever survived.
 

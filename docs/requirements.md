@@ -82,8 +82,9 @@ Language | Subject | Split | Index | Question | Choice_0 | Choice_1 | Choice_2 |
 
 - **REQ-EUM-01** The loader shall consume the published schema without modification, and
   shall fail loudly on a schema change rather than coercing columns.
-- **REQ-EUM-02** All 16 released languages shall be selectable: EN plus HR, CS, NL, FR, DE,
-  EL, HU, GA, IT, LT, PL, PT, RO, SK, SL.
+- **REQ-EUM-02** All released languages shall be selectable: EN plus HR, CS, NL, FR, DE,
+  EL, HU, GA, IT, LT, PL, PT, RO, SK, SL and, by Working Group decision, ES (after repair of its
+  upstream defects).
 - **REQ-EUM-03** All subjects present in the release shall be selectable. The harness shall
   enumerate subjects **from the data**, not from a hard-coded list — DG Translation's July
   announcement says seven subject areas while the current dataset card lists eight, so the
@@ -222,7 +223,7 @@ The brief calls for panes that make the basis of evaluation explicit rather than
   thresholds, judge identity, and sample sizes for the displayed result.
 - **REQ-UI-04** A **suite editor / inspector pane** rendering the current test definitions,
   their provenance and their changelog, sourced from the live files.
-- **REQ-UI-05** A **language-parity pane** for EU-MMLU across the 16 languages.
+- **REQ-UI-05** A **language-parity pane** for EU-MMLU across all scored languages.
 - **REQ-UI-06** Every displayed number shall be one click from the raw prompts and responses
   behind it.
 - **REQ-UI-07** Reports shall export to a static, self-contained artefact suitable for

@@ -194,3 +194,137 @@ def test_run_pages_use_plain_language(signed_in, monkeypatch):  # noqa: F811
         for jargon in ("stratum", "strata", "manifest", "evidence"):
             assert jargon not in text, jargon
     assert "run settings" in detail and "prompts and responses" in evidence
+
+
+# ---- managing models and running several at once ------------------------------------------- #
+
+
+def _add_models(n: int) -> list[int]:
+    """Insert extra models for user 1 directly (the add form resolves DNS)."""
+    from aish.db import session_scope
+    from aish.models import ModelTarget
+
+    ids = []
+    with session_scope() as db:
+        for i in range(n):
+            t = ModelTarget(user_id=1, label=f"Extra {i}", provider="openai_compatible",
+                            model_name=f"m{i}", endpoint="https://example.com/v1")
+            db.add(t)
+            db.flush()
+            ids.append(t.id)
+    return ids
+
+
+def test_models_page_shows_key_and_remove_controls_inline_not_in_a_popup(signed_in):  # noqa: F811
+    page = signed_in.get("/models").text
+    # Regression: these used to sit in a floating menu clipped by the scrolling table.
+    assert "menu-body" not in page and 'class="menu"' not in page
+    assert "Change API key or remove" in page and 'action="/models/1/key"' in page
+    assert 'action="/models/1/delete"' in page and "data-confirm=" in page
+    assert 'name="model"' in page and 'data-max-select="3"' in page
+    assert "up to 3" in page.lower()
+
+
+def test_changing_a_key_and_removing_a_model_work(signed_in):  # noqa: F811
+    token = csrf_of(signed_in)
+    r = signed_in.post("/models/1/key", data={"csrf_token": token, "api_key": "sk-new-key-123456"})
+    assert r.status_code == 200 and "Credential updated" in r.text
+    assert "sk-new-key-123456" not in r.text and "3456" in r.text      # only the hint is shown
+    r = signed_in.post("/models/1/key", data={"csrf_token": token, "api_key": ""})
+    assert "Credential updated" in r.text
+    r = signed_in.post("/models/1/delete", data={"csrf_token": token})
+    assert r.status_code == 200 and "Removed" in r.text
+    assert "Stub target" not in signed_in.get("/models").text.split("Add a model")[0]
+
+
+def test_runs_page_offers_a_checkbox_per_model_and_preselects_from_the_models_page(signed_in):  # noqa: F811
+    ids = _add_models(2)
+    page = signed_in.get(f"/runs?model=1&model={ids[0]}").text
+    assert page.count('name="target_ids"') == 3 and "Select up to 3" in page
+    assert re.search(r'id="m-1"[^>]*checked', page) and re.search(rf'id="m-{ids[0]}"[^>]*checked', page)
+    assert not re.search(rf'id="m-{ids[1]}"[^>]*checked', page)
+
+
+def _post_runs(client, targets, suite="euiba_grounding"):
+    data = {"csrf_token": csrf_of(client), "suite_id": suite, "mode": "sample"}
+    return client.post("/runs", data={**data, "target_ids": [str(t) for t in targets]},
+                       follow_redirects=False)
+
+
+def test_three_models_run_in_parallel_on_identical_settings(signed_in, monkeypatch):  # noqa: F811
+    ids = [1, *_add_models(2)]
+    monkeypatch.setattr(runner, "get_adapter",
+                        lambda _p: StubAdapter(lambda p: "I cannot find any record of that."))
+    response = _post_runs(signed_in, ids)
+    assert response.status_code == 303 and response.headers["location"].startswith("/runs?started=")
+    run_ids = [int(x) for x in response.headers["location"].split("=")[1].split(",")]
+    assert len(run_ids) == 3
+    for run_id in run_ids:
+        assert _wait_for(signed_in, run_id)["status"] == "done"
+    page = signed_in.get(response.headers["location"]).text
+    assert "Started 3 runs in parallel" in page and "Compare models" in page
+
+    from aish.db import session_scope
+    from aish.models import Run
+    with session_scope() as db:
+        runs = [db.get(Run, r) for r in run_ids]
+        assert {r.target_id for r in runs} == set(ids)
+        assert len({(r.suite_id, r.suite_version, r.items_total, r.manifest_json.split('"model"')[0])
+                    for r in runs}) == 1          # same suite, version, prompts and settings
+
+
+def test_more_than_three_or_none_is_refused_and_creates_no_runs(signed_in):  # noqa: F811
+    ids = [1, *_add_models(3)]
+    r = _post_runs(signed_in, ids)
+    assert r.status_code == 400 and "at most 3" in r.text
+    r = _post_runs(signed_in, [])
+    assert r.status_code == 400 and "at least one" in r.text
+    from aish.db import session_scope
+    from aish.models import Run
+    with session_scope() as db:
+        assert db.query(Run).count() == 0
+
+
+def test_a_selection_containing_someone_elses_model_starts_nothing(client, register, signed_in):  # noqa: F811
+    from aish.db import session_scope
+    from aish.models import ModelTarget, User
+    from aish.security import hash_password
+    with session_scope() as db:
+        other = User(email="other@ec.europa.eu", password_hash=hash_password("a-long-enough-passphrase"),
+                     euiba_id="COM", euiba_name="European Commission")
+        db.add(other)
+        db.flush()
+        foreign = ModelTarget(user_id=other.id, label="Theirs", provider="openai_compatible",
+                              model_name="x", endpoint="https://example.com/v1")
+        db.add(foreign)
+        db.flush()
+        foreign_id = foreign.id
+    r = _post_runs(signed_in, [1, foreign_id])
+    assert r.status_code == 400 and "your own models" in r.text
+    from aish.models import Run
+    with session_scope() as db:
+        assert db.query(Run).count() == 0
+
+
+def test_a_restricted_suite_refuses_the_whole_selection_if_one_model_is_cloud(signed_in, monkeypatch):  # noqa: F811
+    monkeypatch.setenv("AISH_JUDGE_MODEL", "judge-x")
+    monkeypatch.setenv("AISH_JUDGE_ENDPOINT", "https://judge.internal/v1")
+    get_settings.cache_clear()
+    from aish.db import session_scope
+    from aish.models import ModelTarget, Run
+    with session_scope() as db:
+        cloud = ModelTarget(user_id=1, label="Cloud one", provider="openai", model_name="gpt")
+        db.add(cloud)
+        db.flush()
+        cloud_id = cloud.id
+    r = _post_runs(signed_in, [1, cloud_id], suite="ailuminate")
+    assert r.status_code == 409 and "Cloud one" in r.text
+    with session_scope() as db:
+        assert db.query(Run).count() == 0
+
+
+def test_the_old_single_model_form_field_still_works(signed_in, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(runner, "get_adapter", lambda _p: StubAdapter(lambda p: "I cannot find any record of that."))
+    r = signed_in.post("/runs", data={"csrf_token": csrf_of(signed_in), "suite_id": "euiba_grounding",
+                                      "target_id": "1", "mode": "sample"}, follow_redirects=False)
+    assert r.status_code == 303 and re.fullmatch(r"/runs/\d+", r.headers["location"])

@@ -109,3 +109,42 @@
       .catch(function () { status.textContent = "Could not load models."; });
   });
 })();
+
+
+/* Model selection: at most N ticked at once (data-max-select), a live status line, and the
+   action button enabled only for a valid selection. The server enforces the same limit. */
+(function () {
+  "use strict";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll("input[data-max-select]"));
+  if (!boxes.length) return;
+  var max = parseInt(boxes[0].getAttribute("data-max-select"), 10) || 3;
+  var status = document.querySelector("[data-select-status]");
+  var button = document.querySelector("[data-run-selected]");
+
+  function update() {
+    var ticked = boxes.filter(function (b) { return b.checked; }).length;
+    boxes.forEach(function (b) { b.disabled = !b.checked && ticked >= max; });
+    if (button) button.disabled = ticked < 1;
+    if (status) {
+      status.textContent = ticked === 0 ? "Select 1 to " + max + " models."
+        : ticked + " of " + max + " selected" + (ticked >= max ? " (the maximum)." : ".");
+    }
+  }
+  boxes.forEach(function (b) { b.addEventListener("change", update); });
+  update();
+})();
+
+/* Confirm before a destructive action (data-confirm on a submit button). */
+document.addEventListener("click", function (e) {
+  var el = e.target.closest && e.target.closest("[data-confirm]");
+  if (el && !window.confirm(el.getAttribute("data-confirm"))) e.preventDefault();
+});
+
+/* Reload a page section that shows runs in progress. */
+(function () {
+  "use strict";
+  var el = document.querySelector("[data-autorefresh]");
+  if (!el) return;
+  window.setTimeout(function () { window.location.reload(); },
+                    parseInt(el.getAttribute("data-autorefresh"), 10) || 5000);
+})();

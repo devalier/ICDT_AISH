@@ -8,10 +8,11 @@ review:
   - {item: "Dataset fetched, validated and revision pinned (snapshot bundled in the repository)", owner: "Data / infrastructure owner", status: done}
   - {item: "Subject list confirmed against the data: eight subjects (OQ-1)", owner: "Working Group", status: done}
   - {item: "Contamination policy for cloud models agreed (OQ-6)", owner: "Working Group", status: pending}
-  - {item: "Decision on partially translated languages (Irish, Hungarian, Portuguese) and on adding ES_ES (repaired, 8 subjects, 26 history questions missing)", owner: "Working Group", status: pending}
+  - {item: "Decision on partially translated languages (Irish, Hungarian, Portuguese): include in the headline parity floor or report separately", owner: "Working Group", status: pending}
+  - {item: "ES_ES added to the scored languages (repaired; 26 of 165 history questions missing)", owner: "Working Group", status: done}
   - {item: "Report the upstream data defects to DG Translation (see datasets/eu_mmlu/ATTRIBUTION.md)", owner: "Working Group", status: pending}
   - {item: "Pass/watch/fail thresholds ratified (OQ-5)", owner: "Working Group", status: pending}
-version: 0.2.0
+version: 0.3.0
 owner: ICDT ET Working Group
 basis: docs/requirements.md#31-eu-mmlu--multilingual-capability
 description: >
@@ -51,9 +52,11 @@ dataset:
     - sociology
 
 strata: [language, subject]
-# The 16 locales the dataset card lists. The release also contains ES_ES, which the card does
-# not list as released and whose file has conflicting rows, so it is deliberately not scored.
-languages: [en, hr, cs, nl, fr, de, el, hu, ga, it, lt, pl, pt, ro, sk, sl]
+# The 16 locales the dataset card lists, plus Spanish. ES_ES is in the release but not on the
+# card's list; its defects are repaired (datasets/eu_mmlu/ATTRIBUTION.md) and the Working Group
+# decided to score it. It lacks 26 of 165 history questions, so its parity is computed on the
+# questions it shares with English, as for the other partly translated languages.
+languages: [en, es, hr, cs, nl, fr, de, el, hu, ga, it, lt, pl, pt, ro, sk, sl]
 reference_language: en              # parity is measured against this
 
 prompt:
@@ -105,3 +108,9 @@ changelog:
       Upstream defects are repaired where the rest of the release proves the fix (Hungarian index,
       German rows in the Portuguese file, Spanish rows filed under the wrong subject) and logged;
       15 unrecoverable Spanish rows are quarantined.
+  - version: 0.3.0
+    date: 2026-11-11
+    author: ICDT ET Working Group (drafted with Claude)
+    change: >
+      Added Spanish (es) to the scored languages, after its upstream defects were repaired. The
+      parity floor now ranges over 16 non-English languages, so it is not comparable with 0.2.x.

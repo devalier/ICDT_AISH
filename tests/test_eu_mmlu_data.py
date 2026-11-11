@@ -95,16 +95,16 @@ def test_snapshot_matches_the_pin_and_the_published_schema(snapshot):
     assert max(keys.values()) == 1, "snapshot must contain no ambiguous keys"
 
 
-def test_snapshot_covers_the_sixteen_locales_and_eight_subjects(snapshot):
+def test_snapshot_covers_the_scored_locales_and_eight_subjects(snapshot):
     suite = current().suite("eu_mmlu")
     wanted = {l.upper() for l in suite["languages"]}
     test_rows = [r for r in snapshot if r["Split"] == "test"]
     assert wanted <= {r["Language"] for r in test_rows}
-    assert "ES" not in wanted and len(wanted) == 16
+    assert "ES" in wanted and len(wanted) == 17
     assert len({r["Subject"] for r in snapshot}) == 8
     by = Counter(r["Language"] for r in test_rows)
     assert by["EN"] == 1036 and by["GA"] == 391          # the release is partly translated
-    assert by["HU"] == 618 and by["PT"] == 776
+    assert by["HU"] == 618 and by["PT"] == 776 and by["ES"] == 1010
 
 
 def test_index_aligns_across_languages_so_paired_parity_is_valid(snapshot):
@@ -141,6 +141,9 @@ def test_a_perfect_model_scores_full_marks_with_paired_parity_on_the_real_data(s
     assert set(summary["parity"]) == {l for l in suite["languages"] if l != "en"}
     assert all(v == pytest.approx(1.0) for v in summary["parity"].values())
     assert set(summary["parity_basis"].values()) == {"paired"}
+    # Spanish is scored and paired like the rest; it lacks 26 history questions, so it shares
+    # fewer questions with English than a complete language such as German.
+    assert summary["parity"]["es"] == pytest.approx(1.0) and summary["parity_n"]["es"] > 0
     # Irish only has four of the eight subjects; it is paired on what it shares with English.
     assert summary["parity_n"]["ga"] < summary["parity_n"]["de"]
     assert summary["dataset_revision"] if "dataset_revision" in summary else True

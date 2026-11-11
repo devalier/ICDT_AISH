@@ -55,7 +55,6 @@ The European Commission accepts no liability for possible errors or for any misu
   - *Lithuanian:* two empty trailing header cells, tolerated.
   - *Not defects:* a few questions repeat verbatim within a language (they repeat in the original
     English MMLU too), and 47 rows have two equal choices (as in MMLU).
-- **Spanish is complete except 26 history questions, but is still not scored.** The dataset card lists
-  16 released locales and Spanish is not one of them. Adding it is a one-line change to `languages`
-  in `packs/suites/eu_mmlu.yaml`, a Working Group decision.
+- **Spanish is complete except 26 history questions and is scored** (suite v0.3.0), by Working Group
+  decision, although the dataset card does not list it among the released locales.
 - **Report these to the maintainers** so the defects can be fixed upstream.

@@ -20,10 +20,26 @@ from .deps import AuthContext, audit, require_user, templates, verify_csrf
 router = APIRouter()
 
 DEFAULT_SEED = 20260921
+# Parallel runs are capped: each opens its own concurrent requests to the model provider.
+MAX_PARALLEL_MODELS = 3
 
 
 def _owned_run(db: Session, context: AuthContext, run_id: int) -> Run | None:
     return db.scalar(select(Run).where(Run.id == run_id, Run.user_id == context.user.id))
+
+
+def _started_runs(db: Session, context: AuthContext, started) -> list[dict]:
+    """Runs a user has just launched (ids in the query string), limited to their own."""
+    if not isinstance(started, str) or not started:
+        return []
+    ids = [int(x) for x in started.split(",") if x.strip().isdigit()][:MAX_PARALLEL_MODELS]
+    out = []
+    for run_id in ids:
+        run = _owned_run(db, context, run_id)
+        if run is not None:
+            target = db.get(ModelTarget, run.target_id)
+            out.append({"id": run.id, "label": target.label if target else f"run {run.id}"})
+    return out
 
 
 @router.get("/runs", response_class=HTMLResponse)
@@ -33,6 +49,8 @@ def list_runs(
     context: AuthContext = Depends(require_user),
     error: str | None = None,
     suite: str | None = None,
+    model: list[int] = Query(default=[]),
+    started: str | None = None,
 ):
     view = current()
     runs = list(
@@ -65,6 +83,8 @@ def list_runs(
             )},
             "error": error,
             "selected_suite": suite,
+            "selected_models": {m for m in (model if isinstance(model, list) else []) if isinstance(m, int)},
+            "started": _started_runs(db, context, started),
             "suite_names": {s["id"]: f"{s.get('menu_label', s.get('family', ''))} · {s.get('title', s['id'])}"
                             for s in view.suites()},
         },
@@ -75,33 +95,45 @@ def list_runs(
 def start_run(
     request: Request,
     suite_id: str = Form(...),
-    target_id: int = Form(...),
+    target_ids: list[int] = Form(default=[]),
+    target_id: int | None = Form(None),
     mode: str = Form("sample"),
     db: Session = Depends(get_session),
     context: AuthContext = Depends(require_user),
 ):
+    """Start one run per selected model (up to MAX_PARALLEL_MODELS), all on the same prompts
+    and settings so their results are directly comparable. Everything is validated before any
+    run is created, so a refusal never leaves half a comparison behind."""
     view = current()
     suite = view.suite(suite_id)
-    target = db.scalar(
-        select(ModelTarget).where(
-            ModelTarget.id == target_id, ModelTarget.user_id == context.user.id
-        )
-    )
+    chosen = list(dict.fromkeys([*target_ids, *([target_id] if target_id is not None else [])]))
 
     def fail(message: str, status_code: int = 400):
-        response = list_runs(request, db, context, error=message)
+        response = list_runs(request, db, context, error=message, suite=suite_id, model=chosen,
+                             started=None)
         response.status_code = status_code
         return response
 
     if suite is None:
         return fail("That suite is not defined.")
-    if target is None:
-        return fail("Select one of your own models.")
+    if not chosen:
+        return fail("Select at least one model to test.")
+    if len(chosen) > MAX_PARALLEL_MODELS:
+        return fail(f"Select at most {MAX_PARALLEL_MODELS} models for one comparison; "
+                    f"you selected {len(chosen)}.")
+    targets = list(db.scalars(
+        select(ModelTarget).where(ModelTarget.id.in_(chosen), ModelTarget.user_id == context.user.id)
+    ))
+    if len(targets) != len(chosen):
+        return fail("You can only select your own models.")
+    targets.sort(key=lambda t: chosen.index(t.id))
 
     sample = mode != "full"
-    if suite.get("restricted") and target.provider in judge.CLOUD_PROVIDERS:
-        return fail("This suite is restricted: it may only run against on-prem "
-                    "(openai_compatible) models, not cloud models.", 409)
+    if suite.get("restricted"):
+        cloud = [t.label for t in targets if t.provider in judge.CLOUD_PROVIDERS]
+        if cloud:
+            return fail("This suite is restricted: it may only run against on-prem "
+                        f"(openai_compatible) models, not cloud models ({', '.join(cloud)}).", 409)
     try:
         if suite.get("family") == "safety":
             judge.require_configured(restricted=bool(suite.get("restricted")))
@@ -112,57 +144,67 @@ def start_run(
     limit = get_settings().max_items_per_run
     if len(items) > limit:
         return fail(
-            f"That run would send {len(items):,} items, above this instance's limit of "
+            f"That run would send {len(items):,} prompts, above this instance's limit of "
             f"{limit:,}. Use sample mode, or ask an administrator to raise "
             "AISH_MAX_ITEMS_PER_RUN. The harness will not shorten a run silently, "
-            "because dropping items would distort the strata the score is averaged over.",
+            "because dropping prompts would distort the categories the score is averaged over.",
             409,
         )
 
-    run = Run(
-        user_id=context.user.id,
-        target_id=target.id,
-        suite_id=suite_id,
-        suite_version=str(suite.get("version", "")),
-        family=str(suite.get("family", "")),
-        status="queued",
-        sample_mode=sample,
-        items_total=len(items),
-        manifest_json=json.dumps(
-            {
-                "suite_id": suite_id,
-                "suite_version": suite.get("version"),
-                "scorer": suite.get("scorer"),
-                "criteria": suite.get("criteria"),
-                "dataset_revision": dataset_revision(suite),
-                "provider": target.provider,
-                "model": target.model_name,
-                "sample_mode": sample,
-                "seed": DEFAULT_SEED,
-                "temperature": run_temperature(suite, sample),
-                "top_p": 1.0,
-                "max_tokens": 1024,
-                **({"judge": judge.describe()} if suite.get("family") == "safety" else {}),
-            }
-        ),
-    )
-    db.add(run)
-    db.flush()
-    run_id = run.id
-    audit(db, "run.started", request=request, user_id=context.user.id,
-          detail=f"{suite_id} -> {target.label}")
+    run_ids = []
+    for target in targets:
+        run = Run(
+            user_id=context.user.id,
+            target_id=target.id,
+            suite_id=suite_id,
+            suite_version=str(suite.get("version", "")),
+            family=str(suite.get("family", "")),
+            status="queued",
+            sample_mode=sample,
+            items_total=len(items),
+            manifest_json=json.dumps(
+                {
+                    "suite_id": suite_id,
+                    "suite_version": suite.get("version"),
+                    "scorer": suite.get("scorer"),
+                    "criteria": suite.get("criteria"),
+                    "dataset_revision": dataset_revision(suite),
+                    "provider": target.provider,
+                    "model": target.model_name,
+                    "sample_mode": sample,
+                    "seed": DEFAULT_SEED,
+                    "temperature": run_temperature(suite, sample),
+                    "top_p": 1.0,
+                    "max_tokens": 1024,
+                    **({"judge": judge.describe()} if suite.get("family") == "safety" else {}),
+                }
+            ),
+        )
+        db.add(run)
+        db.flush()
+        run_ids.append(run.id)
+        audit(db, "run.started", request=request, user_id=context.user.id,
+              detail=f"{suite_id} -> {target.label}")
     db.commit()
 
-    try:
-        queue_run(run_id)
-    except RunError as exc:
-        with_failure = db.get(Run, run_id)
-        if with_failure is not None:
-            with_failure.status = "failed"
-            with_failure.error = str(exc)[:600]
-        return fail(str(exc), 503)
+    failed = []
+    for run_id in run_ids:
+        try:
+            queue_run(run_id)
+        except RunError as exc:
+            run = db.get(Run, run_id)
+            if run is not None:
+                run.status = "failed"
+                run.error = str(exc)[:600]
+            failed.append(str(exc))
+    if failed and len(failed) == len(run_ids):
+        db.commit()
+        return fail(failed[0], 503)
+    db.commit()
 
-    return RedirectResponse(f"/runs/{run_id}", status_code=303)
+    if len(run_ids) == 1:
+        return RedirectResponse(f"/runs/{run_ids[0]}", status_code=303)
+    return RedirectResponse("/runs?started=" + ",".join(str(r) for r in run_ids), status_code=303)
 
 
 @router.get("/runs/{run_id}", response_class=HTMLResponse)
