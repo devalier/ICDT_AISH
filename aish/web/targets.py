@@ -13,7 +13,7 @@ from ..models import ModelTarget, utcnow
 from ..packs import current
 from ..providers import PROVIDERS, ProviderError, get_adapter
 from ..providers.base import GenerationParams
-from ..providers.catalog import list_models
+from ..providers.catalog import list_model_entries
 from ..security import decrypt_secret, encrypt_secret, redact, secret_hint, validate_endpoint
 from .deps import AuthContext, audit, require_user, templates, verify_csrf
 
@@ -82,11 +82,13 @@ async def available_models(
     """Models the entered key can use. The key is used for this one call, never stored."""
     if provider not in PROVIDERS:
         return JSONResponse({"error": "Choose a provider from the list."}, status_code=400)
+    # Providers with their own fixed API never take a URL from the form.
+    use_endpoint = endpoint.strip()[:400] if PROVIDERS[provider].get("endpoint") != "none" else ""
     try:
-        models = await list_models(provider, api_key.strip() or None, endpoint.strip()[:400] or None)
+        entries = await list_model_entries(provider, api_key.strip() or None, use_endpoint or None)
     except ProviderError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
-    return {"models": models}
+    return {"models": [e["id"] for e in entries], "labels": {e["id"]: e["label"] for e in entries if e["label"]}}
 
 
 @router.post("/models", dependencies=[Depends(verify_csrf)])
@@ -124,6 +126,11 @@ def create_target(
         return fail("This provider requires an API key.")
     if spec["requires_endpoint"] and not endpoint:
         return fail("An on-prem model needs its endpoint URL.")
+    if spec.get("endpoint") == "none":
+        # Fireworks, OpenRouter and Anthropic are called on their own fixed API only, so a key
+        # entered here can never be sent to another host.
+        endpoint = ""
+        form["endpoint"] = ""
     endpoint_warning = ""
     if endpoint:
         check = validate_endpoint(endpoint)

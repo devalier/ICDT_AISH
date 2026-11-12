@@ -122,6 +122,25 @@ prompt, and are refused if Cohen's kappa is below the suite minimum (0.6). The l
 come from human reviewers and are not in this repository. Scores are always labelled
 **unofficial**: the MLCommons ensemble evaluator and grading are not used.
 
+## Model providers
+
+Every model is **bring your own key**: the user pastes their own API key, presses **Load models from
+provider**, and picks from the models that key can use (or types any id the provider accepts). The
+key is encrypted at rest and never shown again.
+
+| Provider | Model list | Notes |
+|---|---|---|
+| Anthropic, OpenAI, DeepSeek | from the provider, with the key | |
+| **Fireworks AI** | Fireworks' serverless catalogue, with the key; each entry shows its name, context size and any retirement date | Any id Fireworks accepts also works, including models and deployments in the user's own account (`accounts/<you>/...`) |
+| **OpenRouter** | OpenRouter's public catalogue (can be browsed before entering a key), with name, context size and price per 1M tokens | Requests go only to upstream providers that do not store or train on prompts (`AISH_OPENROUTER_DATA_COLLECTION=deny`, the default). A prompt blocked by OpenRouter's moderation is recorded as a refusal |
+| On-prem / OpenAI-compatible | from the endpoint | The only provider that takes a URL from the form |
+
+Fireworks and OpenRouter are always called on their own fixed APIs, so a key entered for them can
+never be sent to another host. Both are cloud providers: the restricted AILuminate suite refuses them,
+both as the model under test and as the judge. Either can be used as the judge for unrestricted suites
+(`AISH_JUDGE_PROVIDER=openrouter` or `fireworks`, with `AISH_JUDGE_MODEL` and `AISH_JUDGE_API_KEY`).
+Reasoning text that some open models put in `<think>` tags is removed before scoring.
+
 ## Customising a test suite
 
 Any signed-in user can keep a personal copy of any of the four suites (Language, Safety, Bias,

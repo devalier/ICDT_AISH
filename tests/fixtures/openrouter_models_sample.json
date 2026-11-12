@@ -1,0 +1,496 @@
+{
+ "data": [
+  {
+   "id": "meta-llama/llama-3.3-70b-instruct",
+   "canonical_slug": "meta-llama/llama-3.3-70b-instruct",
+   "hugging_face_id": "meta-llama/Llama-3.3-70B-Instruct",
+   "name": "Meta: Llama 3.3 70B Instruct",
+   "created": 1733506137,
+   "description": "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and i",
+   "context_length": 131072,
+   "architecture": {
+    "modality": "text->text",
+    "input_modalities": [
+     "text"
+    ],
+    "output_modalities": [
+     "text"
+    ],
+    "tokenizer": "Llama3",
+    "instruct_type": "llama3"
+   },
+   "pricing": {
+    "prompt": "0.00000071",
+    "completion": "0.00000071",
+    "input_cache_read": "0.00000071"
+   },
+   "top_provider": {
+    "context_length": 128000,
+    "max_completion_tokens": 115200,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "frequency_penalty",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ],
+   "default_parameters": {},
+   "supported_voices": null,
+   "knowledge_cutoff": "2023-12-31",
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/meta-llama/llama-3.3-70b-instruct/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "benchmarks": {
+    "design_arena": [],
+    "artificial_analysis": {
+     "intelligence_index": null,
+     "coding_index": 11.9,
+     "agentic_index": null
+    }
+   }
+  },
+  {
+   "id": "baidu/ernie-5.5-flash-preview:free",
+   "canonical_slug": "baidu/ernie-5.5-flash-preview-20261110",
+   "hugging_face_id": "baidu/ERNIE-5.5-Flash-Preview",
+   "name": "Baidu: ERNIE-5.5-Flash-Preview (free)",
+   "created": 1794333533,
+   "description": "ERNIE 5.5 Flash Preview is the latest foundation model in the ERNIE family, with",
+   "context_length": 1024000,
+   "architecture": {
+    "modality": "text->text",
+    "input_modalities": [
+     "text"
+    ],
+    "output_modalities": [
+     "text"
+    ],
+    "tokenizer": "Other",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1024000,
+    "max_completion_tokens": 921600,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ],
+   "default_parameters": {},
+   "supported_voices": null,
+   "knowledge_cutoff": null,
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/baidu/ernie-5.5-flash-preview-20261110/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "high"
+    ],
+    "default_effort": "high"
+   }
+  },
+  {
+   "id": "google/gemini-4-carbon:batch",
+   "canonical_slug": "google/gemini-4-carbon-20261110",
+   "hugging_face_id": null,
+   "name": "Google: Gemini 4 Carbon (batch)",
+   "created": 1794326871,
+   "description": "Gemini 4 Carbon is a frontier Gemini 4 model from Google for coding, agentic and",
+   "context_length": 1048576,
+   "architecture": {
+    "modality": "text+image+file+audio+video->text",
+    "input_modalities": [
+     "audio",
+     "file",
+     "image",
+     "text",
+     "video"
+    ],
+    "output_modalities": [
+     "text"
+    ],
+    "tokenizer": "Gemini",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0.000001",
+    "completion": "0.000005",
+    "image": "0.000001",
+    "audio": "0.000001",
+    "input_audio_cache": "0.00000005",
+    "web_search": "0.014",
+    "internal_reasoning": "0.000005",
+    "input_cache_read": "0.00000005",
+    "input_cache_write": "0.0000001875"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ],
+   "default_parameters": {
+    "temperature": null,
+    "top_p": null,
+    "top_k": null,
+    "frequency_penalty": null,
+    "presence_penalty": null,
+    "repetition_penalty": null
+   },
+   "supported_voices": null,
+   "knowledge_cutoff": null,
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/google/gemini-4-carbon-20261110/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/batches"
+   ],
+   "benchmarks": {
+    "design_arena": [
+     {
+      "arena": "models",
+      "category": "3d",
+      "elo": 1374,
+      "win_rate": 63.2,
+      "rank": 9
+     },
+     {
+      "arena": "models",
+      "category": "codecategories",
+      "elo": 1325,
+      "win_rate": 56.7,
+      "rank": 11
+     },
+     {
+      "arena": "models",
+      "category": "gamedev",
+      "elo": 1271,
+      "win_rate": 48.7,
+      "rank": 25
+     },
+     {
+      "arena": "models",
+      "category": "uicomponent",
+      "elo": 1344,
+      "win_rate": 60.8,
+      "rank": 8
+     },
+     {
+      "arena": "models",
+      "category": "website",
+      "elo": 1285,
+      "win_rate": 52,
+      "rank": 22
+     }
+    ],
+    "artificial_analysis": {
+     "intelligence_index": 60,
+     "coding_index": null,
+     "agentic_index": null
+    }
+   },
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   }
+  },
+  {
+   "id": "google/gemini-4-carbon",
+   "canonical_slug": "google/gemini-4-carbon-20261110",
+   "hugging_face_id": null,
+   "name": "Google: Gemini 4 Carbon",
+   "created": 1794326871,
+   "description": "Gemini 4 Carbon is a frontier Gemini 4 model from Google for coding, agentic and",
+   "context_length": 1048576,
+   "architecture": {
+    "modality": "text+image+file+audio+video->text",
+    "input_modalities": [
+     "audio",
+     "file",
+     "image",
+     "text",
+     "video"
+    ],
+    "output_modalities": [
+     "text"
+    ],
+    "tokenizer": "Gemini",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "image": "0.000002",
+    "audio": "0.000002",
+    "input_audio_cache": "0.0000001",
+    "web_search": "0.014",
+    "internal_reasoning": "0.00001",
+    "input_cache_read": "0.0000001",
+    "input_cache_write": "0.0000001875"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ],
+   "default_parameters": {
+    "temperature": null,
+    "top_p": null,
+    "top_k": null,
+    "frequency_penalty": null,
+    "presence_penalty": null,
+    "repetition_penalty": null
+   },
+   "supported_voices": null,
+   "knowledge_cutoff": null,
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/google/gemini-4-carbon-20261110/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "benchmarks": {
+    "design_arena": [
+     {
+      "arena": "models",
+      "category": "3d",
+      "elo": 1374,
+      "win_rate": 63.2,
+      "rank": 9
+     },
+     {
+      "arena": "models",
+      "category": "codecategories",
+      "elo": 1325,
+      "win_rate": 56.7,
+      "rank": 11
+     },
+     {
+      "arena": "models",
+      "category": "gamedev",
+      "elo": 1271,
+      "win_rate": 48.7,
+      "rank": 25
+     },
+     {
+      "arena": "models",
+      "category": "uicomponent",
+      "elo": 1344,
+      "win_rate": 60.8,
+      "rank": 8
+     },
+     {
+      "arena": "models",
+      "category": "website",
+      "elo": 1285,
+      "win_rate": 52,
+      "rank": 22
+     }
+    ],
+    "artificial_analysis": {
+     "intelligence_index": 60,
+     "coding_index": null,
+     "agentic_index": null
+    }
+   },
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   }
+  },
+  {
+   "id": "mistralai/mistral-small-3.2-24b-instruct",
+   "canonical_slug": "mistralai/mistral-small-3.2-24b-instruct-2506",
+   "hugging_face_id": "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+   "name": "Mistral: Mistral Small 3.2 24B",
+   "created": 1750443016,
+   "description": "Mistral-Small-3.2-24B-Instruct-2506 is an updated 24B parameter model from Mistr",
+   "context_length": 256000,
+   "architecture": {
+    "modality": "text+image->text",
+    "input_modalities": [
+     "image",
+     "text"
+    ],
+    "output_modalities": [
+     "text"
+    ],
+    "tokenizer": "Mistral",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.0000003",
+    "input_cache_read": "0.00000001"
+   },
+   "top_provider": {
+    "context_length": 32768,
+    "max_completion_tokens": 26214,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "frequency_penalty",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ],
+   "default_parameters": {
+    "temperature": 0.3
+   },
+   "supported_voices": null,
+   "knowledge_cutoff": "2023-10-31",
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/mistralai/mistral-small-3.2-24b-instruct-2506/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "benchmarks": {
+    "design_arena": [
+     {
+      "arena": "models",
+      "category": "codecategories",
+      "elo": 897,
+      "win_rate": 39.8,
+      "rank": 141
+     },
+     {
+      "arena": "models",
+      "category": "dataviz",
+      "elo": 929,
+      "win_rate": 43.3,
+      "rank": 128
+     },
+     {
+      "arena": "models",
+      "category": "gamedev",
+      "elo": 882,
+      "win_rate": 39.4,
+      "rank": 141
+     },
+     {
+      "arena": "models",
+      "category": "uicomponent",
+      "elo": 898,
+      "win_rate": 40.5,
+      "rank": 135
+     },
+     {
+      "arena": "models",
+      "category": "website",
+      "elo": 890,
+      "win_rate": 38.3,
+      "rank": 144
+     }
+    ]
+   }
+  }
+ ]
+}

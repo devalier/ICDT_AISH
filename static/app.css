@@ -506,3 +506,4 @@ input.narrow { width: 110px; }
 .problem-warn { border-left-color: var(--warning); background: var(--tint-watch); }
 .add-form { margin: 8px 0 14px; }
 details.item { scroll-margin-top: 96px; }
+[data-endpoint-field][hidden] { display: none; }
