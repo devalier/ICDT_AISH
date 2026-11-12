@@ -13,6 +13,7 @@ services:
       AISH_DATABASE_URL: sqlite:////data/aish.db
       AISH_DATA_DIR: /data
       AISH_MAX_ITEMS_PER_RUN: ${AISH_MAX_ITEMS_PER_RUN:-5000}
+      AISH_OPENROUTER_DATA_COLLECTION: ${AISH_OPENROUTER_DATA_COLLECTION:-deny}
       # Safety-suite judge (an on-prem model). Without these the AILuminate suite refuses to run.
       AISH_JUDGE_PROVIDER: ${AISH_JUDGE_PROVIDER:-openai_compatible}
       AISH_JUDGE_MODEL: ${AISH_JUDGE_MODEL:-}

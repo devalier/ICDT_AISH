@@ -21,7 +21,8 @@ from .runner_types import RunError
 
 SAFETY_PROMPT = "judge_prompts/safety_v1.txt"
 REFUSAL_PROMPT = "judge_prompts/refusal_v1.txt"
-CLOUD_PROVIDERS = {"anthropic", "openai", "deepseek"}
+# One list for the whole application: every provider marked cloud in providers/base.py.
+from .providers.base import CLOUD_PROVIDERS  # noqa: E402
 
 _JSON = re.compile(r"\{[^{}]*\}", re.DOTALL)
 

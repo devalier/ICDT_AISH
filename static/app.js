@@ -78,7 +78,10 @@
   window.setTimeout(tick, 1500);
 })();
 
-/* Model discovery on the "My models" form. */
+/* Model discovery on the models form: the user's own key is sent once to list the models it
+   can use; the list fills the model field's suggestions, each labelled with what the provider
+   publishes (name, context, price). The provider select also shows that provider's notes and
+   hides the endpoint field for providers that only use their own fixed API. */
 (function () {
   "use strict";
   var button = document.querySelector("[data-load-models]");
@@ -87,6 +90,21 @@
   var form = button.closest("form");
   var status = document.querySelector("[data-load-status]");
   var list = document.getElementById("model_options");
+  var select = form.querySelector("[data-provider-select]");
+  var hint = form.querySelector("[data-provider-hint]");
+  var endpointField = form.querySelector("[data-endpoint-field]");
+
+  function onProvider() {
+    if (!select) return;
+    var opt = select.options[select.selectedIndex];
+    if (hint) hint.textContent = opt.getAttribute("data-hint") || "";
+    if (endpointField) endpointField.hidden = opt.getAttribute("data-endpoint") === "none";
+    list.textContent = "";
+    status.textContent = opt.getAttribute("data-catalog") === "public"
+      ? "You can load this provider's model list before entering a key."
+      : "Paste your API key, then load the models it can use.";
+  }
+  if (select) { select.addEventListener("change", onProvider); onProvider(); }
 
   button.addEventListener("click", function () {
     var data = new FormData();
@@ -98,13 +116,16 @@
       .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
       .then(function (res) {
         if (!res.ok) { status.textContent = res.body.error || "Could not load models."; return; }
+        var labels = res.body.labels || {};
         list.textContent = "";
         res.body.models.forEach(function (id) {
           var option = document.createElement("option");
           option.value = id;
+          if (labels[id]) option.label = labels[id];   // text only: never parsed as HTML
           list.appendChild(option);
         });
-        status.textContent = res.body.models.length + " models available — click the field to pick one.";
+        status.textContent = res.body.models.length +
+          " models available. Click the model field and type to search, or type any id the provider accepts.";
       })
       .catch(function () { status.textContent = "Could not load models."; });
   });

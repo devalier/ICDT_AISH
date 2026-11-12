@@ -93,11 +93,14 @@
       </div>
       <div>
         <label for="provider">Provider</label>
-        <select id="provider" name="provider" required>
+        <select id="provider" name="provider" required data-provider-select>
           {% for pid, spec in providers.items() %}
-            <option value="{{ pid }}" {% if form.provider == pid %}selected{% endif %}>{{ spec.label }}</option>
+            <option value="{{ pid }}" {% if form.provider == pid %}selected{% endif %}
+                    data-endpoint="{{ spec.endpoint }}" data-catalog="{{ spec.catalog }}"
+                    data-cloud="{{ 'yes' if spec.cloud else 'no' }}" data-hint="{{ spec.hint }}">{{ spec.label }}</option>
           {% endfor %}
         </select>
+        <div class="hint" data-provider-hint></div>
       </div>
       <div>
         <label for="fleet_model_id">Fleet model <span class="hint">Optional link to packs/models.yaml.</span></label>
@@ -109,7 +112,7 @@
         </select>
       </div>
 
-      <div class="span-2">
+      <div class="span-2" data-endpoint-field>
         <label for="endpoint">Endpoint URL <span class="hint">Required on-prem. Loopback, link-local and metadata addresses are refused.</span></label>
         <input id="endpoint" name="endpoint" type="url" maxlength="400"
                value="{{ form.endpoint|default('') }}" placeholder="https://llm.internal.example/v1">
@@ -124,7 +127,7 @@
         <div class="input-row">
           <input id="model_name" name="model_name" type="text" required maxlength="160"
                  list="model_options" value="{{ form.model_name|default('') }}" placeholder="llama-3.3-70b-instruct">
-          <button type="button" class="secondary" data-load-models>Load models</button>
+          <button type="button" class="secondary" data-load-models>Load models from provider</button>
         </div>
         <datalist id="model_options"></datalist>
         <div class="hint" data-load-status role="status"></div>

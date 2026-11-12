@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     judge_endpoint: str = ""
     judge_api_key: str = ""
 
+    # OpenRouter routes each request to one of several upstream providers. "deny" (the default)
+    # restricts it to providers that do not store or train on prompts; "allow" lifts that.
+    openrouter_data_collection: str = "deny"
+
     @field_validator("cookie_samesite")
     @classmethod
     def _samesite(cls, value: str) -> str:
