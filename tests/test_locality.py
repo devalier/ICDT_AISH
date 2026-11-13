@@ -26,7 +26,7 @@ def fake_dns(monkeypatch):
             raise socket.gaierror("no such host")
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (table[host], port))]
 
-    monkeypatch.setattr(locality.socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(locality, "_lookup", resolve)
     locality._cache.clear()
     yield
     locality._cache.clear()

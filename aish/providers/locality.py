@@ -37,6 +37,7 @@ DEDICATED = {"fireworks.ai": "fireworks", "openrouter.ai": "openrouter", "openai
              "anthropic.com": "anthropic", "deepseek.com": "deepseek"}
 
 _TTL = 300.0
+_lookup = socket.getaddrinfo  # replaced in tests, which must not depend on real DNS
 _cache: dict[str, tuple[float, bool]] = {}
 
 
@@ -63,7 +64,7 @@ def _resolves_public(host: str) -> bool:
         addresses = [address]
     except ValueError:
         try:
-            infos = socket.getaddrinfo(host, 443)
+            infos = _lookup(host, 443)
         except (socket.gaierror, UnicodeError):
             addresses = []
         else:
