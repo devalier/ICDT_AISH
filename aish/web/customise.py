@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import custom, editor, judge
+from .. import custom, editor, judge, prefs
 from ..config import get_settings
 from ..db import get_session
 from ..models import ModelTarget
@@ -99,6 +99,31 @@ async def _try_on_model(suite: dict, view, target: ModelTarget, user_id: int) ->
     return list(await asyncio.gather(*(one(i) for i in picked)))
 
 
+def _consent_page(request: Request, context: AuthContext, suite: dict, status_code: int = 200):
+    return templates.TemplateResponse(request, "customise_consent.html", {
+        "user": context.user, "csrf_token": context.csrf_token, "suite": suite,
+        "active": "suite:" + suite["id"]}, status_code=status_code)
+
+
+def _needs_consent(db: Session, user_id: int, suite: dict) -> bool:
+    """A restricted (Safety) suite is only opened for editing after its content notice."""
+    return bool(suite.get("restricted")) and not prefs.content_acknowledged(db, user_id)
+
+
+@router.post("/suites/{suite_id}/customise/consent", dependencies=[Depends(verify_csrf)])
+def give_consent(request: Request, suite_id: str, understood: str = Form(""),
+                 db: Session = Depends(get_session), context: AuthContext = Depends(require_user)):
+    suite, missing = _suite_or_404(request, suite_id, context)
+    if missing:
+        return missing
+    if understood != "yes":
+        return _consent_page(request, context, suite, status_code=400)
+    prefs.acknowledge_content(db, context.user.id)
+    audit(db, "safety.content_acknowledged", request=request, user_id=context.user.id, detail=suite_id)
+    db.commit()
+    return RedirectResponse(f"/suites/{suite_id}/customise", status_code=303)
+
+
 def _editor_context(view, base: dict) -> editor.Context:
     sources_dir = packs_dir() / "sources"
     return editor.Context(
@@ -153,6 +178,8 @@ def editor_page(request: Request, suite_id: str, open: str | None = None,
     suite, missing = _suite_or_404(request, suite_id, context)
     if missing:
         return missing
+    if _needs_consent(db, context.user.id, suite):
+        return _consent_page(request, context, suite)
     key = None
     if open and "-" in open and open.rsplit("-", 1)[1].isdigit():
         key = (open.rsplit("-", 1)[0], int(open.rsplit("-", 1)[1]))
@@ -167,6 +194,8 @@ async def edit_item(request: Request, suite_id: str, db: Session = Depends(get_s
     base, missing = _suite_or_404(request, suite_id, context)
     if missing:
         return missing
+    if _needs_consent(db, context.user.id, base):
+        return _consent_page(request, context, base, status_code=403)
     view = current()
     form = await request.form()
     section_key, op = str(form.get("section", "")), str(form.get("op", "save"))
@@ -202,6 +231,8 @@ async def draft_action(request: Request, suite_id: str, action: str = Form("prev
     base, missing = _suite_or_404(request, suite_id, context)
     if missing:
         return missing
+    if _needs_consent(db, context.user.id, base):
+        return _consent_page(request, context, base, status_code=403)
     view, user = current(), context.user
 
     if action == "discard":
@@ -247,9 +278,12 @@ async def draft_action(request: Request, suite_id: str, action: str = Form("prev
             ModelTarget.id == target_id, ModelTarget.user_id == user.id)) if target_id else None
         if target is None:
             return page(preview=preview, error="Choose one of your own models to try it on.")
-        if checked.get("restricted") and target.provider in judge.CLOUD_PROVIDERS:
+        if (checked.get("restricted") and target.provider in judge.CLOUD_PROVIDERS
+                and not prefs.cloud_allowed(db, user.id)):
             return page(preview=preview, chosen_target=target.id,
-                        error="This suite is restricted: it may only be tried on on-prem models.")
+                        error=f"{target.label} is a public cloud model. To try the Safety harness on it, switch on "
+                              f"\u201c{prefs.SWITCH_NAME}\u201d on the Safety test suite page; otherwise "
+                              "choose an on-prem model.")
         try:
             if preview["uses_judge"] or checked.get("family") == "safety":
                 judge.require_configured(restricted=bool(checked.get("restricted")))
@@ -271,6 +305,8 @@ def yaml_page(request: Request, suite_id: str, db: Session = Depends(get_session
     base, missing = _suite_or_404(request, suite_id, context)
     if missing:
         return missing
+    if _needs_consent(db, context.user.id, base):
+        return _consent_page(request, context, base)
     return templates.TemplateResponse(request, "customise_yaml.html", {
         "user": context.user, "csrf_token": context.csrf_token, "suite": base, "active": "suite:" + base["id"],
         "text": custom.working_text(db, context.user.id, base), "problems": [], "error": None})
@@ -285,6 +321,8 @@ def yaml_apply(request: Request, suite_id: str, yaml_text: str = Form(""), actio
     base, missing = _suite_or_404(request, suite_id, context)
     if missing:
         return missing
+    if _needs_consent(db, context.user.id, base):
+        return _consent_page(request, context, base, status_code=403)
     checked, problems = custom.check(base, yaml_text, current())
     error = None
     if action == "apply":

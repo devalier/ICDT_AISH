@@ -270,6 +270,9 @@ The brief calls for panes that make the basis of evaluation explicit rather than
   are in the scored baseline.
 - **OQ-2** AILuminate access tier — the public practice set versus the official evaluation
   route through MLCommons. Affects whether scores are externally citable.
+- **OQ-2a** (decided in the application) Safety on cloud models: per-user, off-by-default switch on the
+  Safety suite page, per-run confirmation for cloud models, deployment-wide lock
+  (`AISH_ALLOW_SAFETY_ON_CLOUD_TOGGLE`). REQ-M-03 is otherwise unchanged; the judge stays on-prem.
 - **OQ-3** Judge model policy. Using a cloud model to judge on-prem model outputs may breach
   REQ-NF-03 for restricted content.
 - **OQ-4** Whether the four families roll up into a single published EUIBA score, or are

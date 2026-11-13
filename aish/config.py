@@ -83,6 +83,11 @@ class Settings(BaseSettings):
     judge_endpoint: str = ""
     judge_api_key: str = ""
 
+    # Whether users may switch on "Allow Safety Harness on Public Cloud Models" for themselves.
+    # A deployment that must keep hazardous prompts off third-party APIs sets this to false;
+    # the switch is then shown locked off.
+    allow_safety_on_cloud_toggle: bool = True
+
     # OpenRouter routes each request to one of several upstream providers. "deny" (the default)
     # restricts it to providers that do not store or train on prompts; "allow" lifts that.
     openrouter_data_collection: str = "deny"

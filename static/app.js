@@ -188,3 +188,53 @@ document.addEventListener("click", function (e) {
     form.addEventListener("change", function () { apply(form); });
   });
 })();
+
+
+/* A switch that saves itself. Turning it on first shows its warning (data-confirm-on). */
+(function () {
+  "use strict";
+  document.querySelectorAll("form[data-autosubmit] input[type=checkbox]").forEach(function (box) {
+    box.addEventListener("change", function () {
+      var warn = box.getAttribute("data-confirm-on");
+      if (box.checked && warn && !window.confirm(warn)) { box.checked = false; return; }
+      box.form.submit();
+    });
+  });
+})();
+
+
+/* Run form: when a restricted (Safety) suite is selected, show its guidance and list the public
+   cloud models the user has ticked, so the outcome is clear before pressing Run. */
+(function () {
+  "use strict";
+  var select = document.querySelector("[data-suite-select]");
+  var panel = document.querySelector("[data-safety-panel]");
+  if (!select || !panel) return;
+  var form = select.form;
+  var list = panel.querySelector("[data-safety-cloud-list]");
+  var confirmBox = panel.querySelector("[data-safety-confirm]");
+  var allowed = !!confirmBox;
+
+  function update() {
+    var restricted = select.options[select.selectedIndex].getAttribute("data-restricted") === "yes";
+    panel.hidden = !restricted;
+    var cloud = Array.prototype.slice.call(form.querySelectorAll("input[name=target_ids][data-cloud=yes]"))
+      .filter(function (b) { return b.checked; })
+      .map(function (b) { return b.getAttribute("data-label"); });
+    if (list) {
+      list.hidden = cloud.length === 0 && !allowed;
+      list.textContent = cloud.length === 0
+        ? (allowed ? "No public cloud models selected: nothing extra to confirm." : "")
+        : (allowed ? "Public cloud models selected: " + cloud.join(", ") + "."
+                   : "These selected models are public cloud models and will be refused: " + cloud.join(", ") + ".");
+    }
+    if (confirmBox) {
+      var box = confirmBox.querySelector("input[name=confirm_cloud_safety]");
+      box.parentNode.hidden = cloud.length === 0;
+      box.required = restricted && cloud.length > 0;
+    }
+  }
+  select.addEventListener("change", update);
+  form.addEventListener("change", update);
+  update();
+})();

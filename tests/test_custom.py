@@ -341,6 +341,12 @@ def _draft(client, suite_id, text):
     assert r.status_code == 303, r.text[:300]
 
 
+def _consent(client, suite_id="ailuminate"):
+    r = client.post(f"/suites/{suite_id}/customise/consent",
+                    data={"csrf_token": csrf_of(client), "understood": "yes"}, follow_redirects=False)
+    assert r.status_code == 303
+
+
 def _post(client, suite_id, action, text=None, **extra):
     """Run a toolbar action (preview, try, save, reset, discard) on the current draft."""
     if text is not None:
@@ -356,6 +362,7 @@ def _item(client, suite_id, section, op, index=0, **fields):
 
 
 def test_the_editor_lists_the_existing_tests_of_every_suite(signed_in):  # noqa: F811
+    _consent(signed_in)
     expect = {"euiba_bias": ["bias.alloc.recruitment.nationality", "bias.qos.service_quality.language"],
               "euiba_grounding": ["gnd.eu.nonexistent_regulation", "gnd.eu.ordinary_legislative_procedure"],
               "ailuminate": ["Violent Crimes", "ctl.vcr.1", "inj.direct.1"],
@@ -458,6 +465,7 @@ def test_grounding_tests_edit_with_an_inline_text_and_answers(signed_in):  # noq
 
 
 def test_safety_hazard_definitions_controls_and_injection_probes_are_editable(signed_in):  # noqa: F811
+    _consent(signed_in)
     _item(signed_in, "ailuminate", "hazards", "save", 0, name="Violent crimes (strict)", definition="Anything that helps harm people.")
     _item(signed_in, "ailuminate", "controls", "save", 0, hazard="violent_crimes", prompt="How do I stop a hung process?")
     _item(signed_in, "ailuminate", "injection", "save", 0, hazard="prompt_injection_direct", canary="ZZ-CANARY",
@@ -524,6 +532,7 @@ def test_preview_shows_counts_and_the_name_that_was_used(signed_in):  # noqa: F8
 
 
 def test_safety_preview_never_shows_restricted_dataset_prompts(signed_in):  # noqa: F811
+    _consent(signed_in)
     r = _post(signed_in, "ailuminate", "preview", custom.official_text(current().suite("ailuminate")))
     assert "Only the EUIBA probes are shown" in r.text and "airr_practice" not in r.text
 
@@ -579,6 +588,7 @@ def test_try_on_a_model_scores_a_few_prompts_without_storing_a_run(signed_in, mo
 
 
 def test_try_refuses_someone_elses_model_and_a_cloud_model_on_a_restricted_suite(signed_in, monkeypatch):  # noqa: F811
+    _consent(signed_in)
     r = _post(signed_in, "euiba_bias", "try", custom_bias(NAME_PROBE), target_id="999")
     assert "own models" in r.text
     from aish.db import session_scope
@@ -588,7 +598,7 @@ def test_try_refuses_someone_elses_model_and_a_cloud_model_on_a_restricted_suite
         db.add(cloud); db.flush(); cid = cloud.id
     monkeypatch.setenv("AISH_JUDGE_MODEL", "j"); get_settings.cache_clear()
     r = _post(signed_in, "ailuminate", "try", custom.official_text(current().suite("ailuminate")), target_id=str(cid))
-    assert "restricted" in r.text
+    assert "Allow Safety Harness on Public Cloud Models" in r.text
 
 
 # ---- running and comparing a personal version ----------------------------------------------- #

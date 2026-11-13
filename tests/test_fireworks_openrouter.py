@@ -289,7 +289,7 @@ def test_restricted_suites_refuse_both_providers(client, register, monkeypatch):
     for tid in ids:
         r = client.post("/runs", data={"csrf_token": csrf_of(client), "suite_id": "ailuminate",
                                        "target_ids": [str(tid)], "mode": "sample"})
-        assert r.status_code == 409 and "restricted" in r.text
+        assert r.status_code == 409 and "Allow Safety Harness on Public Cloud Models" in r.text
     with session_scope() as db:
         assert db.query(Run).count() == 0
     from aish import judge

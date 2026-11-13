@@ -22,6 +22,35 @@
     <a class="button secondary" href="/dashboard#axis-{{ family }}">Compare models</a>
   </div>
 </div>
+{% if suite.restricted and safety_pref is not none %}
+  <div class="card cloud-permission" id="cloud-permission">
+    <form method="post" action="/suites/{{ suite.id }}/cloud-permission" data-autosubmit>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="switch">
+        <input type="checkbox" name="allowed" value="1" role="switch"
+               {% if safety_pref.safety_cloud_allowed and safety_toggle_available %}checked{% endif %}
+               {% if not safety_toggle_available %}disabled{% endif %}
+               data-confirm-on="{{ safety_warning }} Switch it on?">
+        <span class="slider" aria-hidden="true"></span>
+        <span class="switch-label">{{ safety_switch_name }}</span>
+      </label>
+      <noscript><button type="submit" class="secondary small">Save</button></noscript>
+      <p class="danger-text">{{ safety_warning }}</p>
+      <p class="small muted">
+        {% if not safety_toggle_available %}
+          Locked off: this deployment does not allow the Safety harness on public cloud models. Use on-prem models.
+        {% elif safety_pref.safety_cloud_allowed %}
+          <strong>On</strong>{% if safety_pref.safety_cloud_changed_at %} since {{ safety_pref.safety_cloud_changed_at|when }}{% endif %}.
+          Each run on a public cloud model still asks you to confirm. On-prem models are unaffected.
+        {% else %}
+          <strong>Off.</strong> The Safety harness runs only on on-prem models. Switch this on to allow public cloud models
+          (OpenAI, Anthropic, DeepSeek, Fireworks, OpenRouter) for your own runs.
+        {% endif %}
+        This setting is yours alone and every change is logged. The judge that grades Safety replies is set by your administrator.
+      </p>
+    </form>
+  </div>
+{% endif %}
 {% if my_row %}
   <div class="notice">
     <strong>You have your own version of this suite <span class="badge-custom">custom {{ my_row.fingerprint[:6] }}</span></strong>

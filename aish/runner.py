@@ -979,11 +979,19 @@ async def _execute(run_id: int) -> None:
         suite = _load_custom(manifest["custom_suite_id"], run_owner, suite, view)
 
     if suite.get("restricted") and provider in judge.CLOUD_PROVIDERS:
-        # REQ-M-03: restricted probe content never reaches a cloud endpoint.
-        raise RunError(
-            f"Suite {suite_id!r} is restricted and may only be run against on-prem "
-            f"(openai_compatible) targets, not {provider!r}."
-        )
+        # REQ-M-03: restricted probe content reaches a cloud endpoint only when the user has
+        # switched on the Safety cloud permission, the deployment allows that switch, and this
+        # run was explicitly confirmed. Checked again here: the switch may have been turned off
+        # since the run was queued.
+        from . import prefs
+        with session_scope() as session:
+            allowed = prefs.cloud_allowed(session, run_owner)
+        if not (allowed and manifest.get("cloud_safety_confirmed")):
+            raise RunError(
+                f"The Safety harness may only run on public cloud models ({provider}) when "
+                f"\u201c{prefs.SWITCH_NAME}\u201d is switched on on the Safety test suite page and "
+                "the run is confirmed. Switch it on, or use an on-prem model."
+            )
     if suite.get("family") == "safety":
         judge.require_configured(restricted=bool(suite.get("restricted")))
         calibration = judge.calibration_status(suite)
