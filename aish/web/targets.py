@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import select
@@ -14,8 +16,11 @@ from ..packs import current
 from ..providers import PROVIDERS, ProviderError, get_adapter
 from ..providers.base import GenerationParams
 from ..providers.catalog import list_model_entries
+from ..providers.locality import dedicated_provider, is_cloud_target
 from ..security import decrypt_secret, encrypt_secret, redact, secret_hint, validate_endpoint
 from .deps import AuthContext, audit, require_user, templates, verify_csrf
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -54,6 +59,7 @@ def _render(
             "csrf_token": context.csrf_token,
             "targets": targets,
             "providers": PROVIDERS,
+            "cloud_target_ids": {t.id for t in targets if is_cloud_target(t.provider, t.endpoint)},
             "fleet": current().fleet(),
             "error": error,
             "notice": notice,
@@ -84,11 +90,30 @@ async def available_models(
         return JSONResponse({"error": "Choose a provider from the list."}, status_code=400)
     # Providers with their own fixed API never take a URL from the form.
     use_endpoint = endpoint.strip()[:400] if PROVIDERS[provider].get("endpoint") != "none" else ""
+    advice = _dedicated_advice(provider, use_endpoint)
     try:
         entries = await list_model_entries(provider, api_key.strip() or None, use_endpoint or None)
     except ProviderError as exc:
-        return JSONResponse({"error": str(exc)}, status_code=400)
-    return {"models": [e["id"] for e in entries], "labels": {e["id"]: e["label"] for e in entries if e["label"]}}
+        return JSONResponse({"error": " ".join(filter(None, [str(exc), advice]))}, status_code=400)
+    except Exception:  # noqa: BLE001 - the page must show a reason, never a bare failure
+        log.exception("listing models failed for provider %s", provider)
+        return JSONResponse({"error": " ".join(filter(None, [
+            "The provider could not be reached or returned something unexpected.", advice]))},
+            status_code=502)
+    return {"models": [e["id"] for e in entries],
+            "labels": {e["id"]: e["label"] for e in entries if e["label"]},
+            "notice": advice}
+
+
+def _dedicated_advice(provider: str, endpoint: str) -> str:
+    """A public service entered as an OpenAI-compatible URL: point at its own provider."""
+    better = dedicated_provider(provider, endpoint)
+    if better:
+        return (f"This URL is {PROVIDERS[better]['label']}, a public cloud service: choose "
+                f"\u201c{PROVIDERS[better]['label']}\u201d as the provider instead of on-prem.")
+    if endpoint and is_cloud_target(provider, endpoint):
+        return "This URL is on the public internet, so the model counts as public cloud."
+    return ""
 
 
 @router.post("/models", dependencies=[Depends(verify_csrf)])
@@ -169,8 +194,12 @@ def create_target(
     db.flush()
     audit(db, "target.created", request=request, user_id=context.user.id,
           detail=f"{provider}:{model_name}")
-    if endpoint_warning:
-        return _render(request, db, context, notice=f"Added {label}.{endpoint_warning}")
+    # A generic public URL is already tagged "public cloud" in the list; a known service
+    # entered as on-prem gets a pointer to its own provider.
+    advice = _dedicated_advice(provider, endpoint) if dedicated_provider(provider, endpoint) else ""
+    if endpoint_warning or advice:
+        return _render(request, db, context,
+                       notice=" ".join(filter(None, [f"Added {label}.{endpoint_warning}", advice])))
     return RedirectResponse("/models", status_code=303)
 
 

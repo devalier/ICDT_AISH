@@ -84,7 +84,7 @@ def list_runs(
             "error": error,
             "selected_suite": suite,
             "selected_models": {m for m in (model if isinstance(model, list) else []) if isinstance(m, int)},
-            "cloud_providers": judge.CLOUD_PROVIDERS,
+            "cloud_target_ids": {t.id for t in targets if prefs.is_cloud(t.provider, t.endpoint)},
             "safety_cloud_allowed": prefs.cloud_allowed(db, context.user.id),
             "safety_toggle_available": prefs.toggle_available(),
             "safety_switch_name": prefs.SWITCH_NAME,
@@ -157,7 +157,7 @@ def start_run(
     sample = mode != "full"
     cloud_ok = False
     if suite.get("restricted"):
-        cloud = [t.label for t in targets if t.provider in judge.CLOUD_PROVIDERS]
+        cloud = [t.label for t in targets if prefs.is_cloud(t.provider, t.endpoint)]
         if cloud:
             names = ", ".join(cloud)
             if not prefs.toggle_available():
@@ -219,7 +219,7 @@ def start_run(
                     "top_p": 1.0,
                     "max_tokens": 1024,
                     **({"cloud_safety_confirmed": True}
-                       if cloud_ok and target.provider in judge.CLOUD_PROVIDERS else {}),
+                       if cloud_ok and prefs.is_cloud(target.provider, target.endpoint) else {}),
                     **({"custom_suite_id": custom_row.id, "fingerprint": custom_row.fingerprint}
                        if custom_row else {}),
                     **({"judge": judge.describe()} if suite.get("family") == "safety" else {}),

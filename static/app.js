@@ -113,7 +113,11 @@
     });
     status.textContent = "Loading…";
     fetch("/models/available", { method: "POST", body: data, credentials: "same-origin" })
-      .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (r) {
+        return r.json()
+          .catch(function () { return { error: "Could not load models: the server answered " + r.status + " " + r.statusText + ". Reload the page and try again." }; })
+          .then(function (body) { return { ok: r.ok, body: body }; });
+      })
       .then(function (res) {
         if (!res.ok) { status.textContent = res.body.error || "Could not load models."; return; }
         var labels = res.body.labels || {};
@@ -125,9 +129,10 @@
           list.appendChild(option);
         });
         status.textContent = res.body.models.length +
-          " models available. Click the model field and type to search, or type any id the provider accepts.";
+          " models available. Click the model field and type to search, or type any id the provider accepts." +
+          (res.body.notice ? " " + res.body.notice : "");
       })
-      .catch(function () { status.textContent = "Could not load models."; });
+      .catch(function () { status.textContent = "Could not load models: the server could not be reached."; });
   });
 })();
 

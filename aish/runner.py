@@ -28,6 +28,7 @@ from .models import ModelTarget, Result, Run, utcnow
 from .packs import current
 from .providers import ProviderError, get_adapter
 from .providers.base import GenerationParams
+from .providers.locality import is_cloud_target
 from .runner_types import RunError
 from .security import DecryptionError, decrypt_secret, redact
 
@@ -978,7 +979,7 @@ async def _execute(run_id: int) -> None:
     if manifest.get("custom_suite_id"):
         suite = _load_custom(manifest["custom_suite_id"], run_owner, suite, view)
 
-    if suite.get("restricted") and provider in judge.CLOUD_PROVIDERS:
+    if suite.get("restricted") and is_cloud_target(provider, endpoint):
         # REQ-M-03: restricted probe content reaches a cloud endpoint only when the user has
         # switched on the Safety cloud permission, the deployment allows that switch, and this
         # run was explicitly confirmed. Checked again here: the switch may have been turned off

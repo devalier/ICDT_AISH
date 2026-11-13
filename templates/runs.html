@@ -41,10 +41,10 @@
         {% for target in targets %}
           <label class="pick plain" for="m-{{ target.id }}">
             <input type="checkbox" id="m-{{ target.id }}" name="target_ids" value="{{ target.id }}" data-max-select="3"
-                   data-cloud="{{ 'yes' if target.provider in cloud_providers else 'no' }}" data-label="{{ target.label }}"
+                   data-cloud="{{ 'yes' if target.id in cloud_target_ids else 'no' }}" data-label="{{ target.label }}"
                    {% if target.id in selected_models %}checked{% endif %}>
             <span><strong>{{ target.label }}</strong> <span class="mono small muted">{{ target.model_name }}</span>
-              <span class="tag">{{ 'public cloud' if target.provider in cloud_providers else 'on-prem' }}</span>
+              <span class="tag">{{ 'public cloud' if target.id in cloud_target_ids else 'on-prem' }}</span>
               {% if target.last_checked_at and not target.last_check_ok %}<span class="status status-bad small">✕ last check failed</span>{% endif %}
             </span>
           </label>

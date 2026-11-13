@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .models import UserPreference, utcnow
-from .providers.base import CLOUD_PROVIDERS
+from .providers.locality import is_cloud_target
 
 
 def get(db: Session, user_id: int) -> UserPreference:
@@ -53,8 +53,8 @@ def acknowledge_content(db: Session, user_id: int) -> None:
     db.flush()
 
 
-def is_cloud(provider: str) -> bool:
-    return provider in CLOUD_PROVIDERS
+def is_cloud(provider: str, endpoint: str | None = None) -> bool:
+    return is_cloud_target(provider, endpoint)
 
 
 SWITCH_NAME = "Allow Safety Harness on Public Cloud Models"

@@ -69,6 +69,9 @@ class Settings(BaseSettings):
 
     # Outbound model calls.
     allow_private_endpoints: bool = True  # on-prem models live on private networks
+    # Comma-separated host suffixes that are on-prem even though they resolve to a public
+    # address (an institution's own public range). Known AI cloud hosts can never be listed.
+    onprem_hosts: str = ""
     request_timeout_seconds: float = 120.0
     max_concurrent_requests: int = 4
     # Must exceed the largest run the instance is expected to accept. Sampled

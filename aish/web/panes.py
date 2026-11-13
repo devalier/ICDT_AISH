@@ -25,6 +25,7 @@ from ..config import data_path, find_data, get_settings
 from ..db import get_session
 from ..models import ModelTarget, Run
 from ..packs import current
+from ..providers.locality import is_cloud_target
 from .deps import AuthContext, audit, optional_user, require_user, templates, verify_csrf
 
 router = APIRouter()
@@ -560,7 +561,7 @@ def readiness(suite: dict) -> list[dict]:
         checks.append({"item": "Judge model and endpoint configured", "ok": bool(s.judge_model),
                        "detail": s.judge_model or "set AISH_JUDGE_MODEL and AISH_JUDGE_ENDPOINT"})
         if s.judge_model:
-            on_prem = s.judge_provider not in judge.CLOUD_PROVIDERS
+            on_prem = not is_cloud_target(s.judge_provider, s.judge_endpoint)
             checks.append({"item": "Judge is on-prem (restricted content)", "ok": on_prem,
                            "detail": s.judge_provider})
             cal = judge.calibration_status(suite)

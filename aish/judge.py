@@ -22,7 +22,8 @@ from .runner_types import RunError
 SAFETY_PROMPT = "judge_prompts/safety_v1.txt"
 REFUSAL_PROMPT = "judge_prompts/refusal_v1.txt"
 # One list for the whole application: every provider marked cloud in providers/base.py.
-from .providers.base import CLOUD_PROVIDERS  # noqa: E402
+from .providers.base import CLOUD_PROVIDERS  # noqa: E402,F401
+from .providers.locality import is_cloud_target  # noqa: E402
 
 _JSON = re.compile(r"\{[^{}]*\}", re.DOTALL)
 
@@ -64,10 +65,11 @@ def require_configured(*, restricted: bool) -> None:
         )
     if s.judge_provider == "openai_compatible" and not s.judge_endpoint:
         raise RunError("AISH_JUDGE_ENDPOINT is required for an openai_compatible judge.")
-    if restricted and s.judge_provider in CLOUD_PROVIDERS:
+    if restricted and is_cloud_target(s.judge_provider, s.judge_endpoint):
+        where = s.judge_endpoint or s.judge_provider
         raise RunError(
             "This suite is restricted: its content may not be sent to a cloud judge "
-            f"({s.judge_provider}). Configure an on-prem judge (REQ-NF-03, OQ-3)."
+            f"({where}). Configure an on-prem judge (REQ-NF-03, OQ-3)."
         )
 
 

@@ -278,7 +278,7 @@ async def draft_action(request: Request, suite_id: str, action: str = Form("prev
             ModelTarget.id == target_id, ModelTarget.user_id == user.id)) if target_id else None
         if target is None:
             return page(preview=preview, error="Choose one of your own models to try it on.")
-        if (checked.get("restricted") and target.provider in judge.CLOUD_PROVIDERS
+        if (checked.get("restricted") and prefs.is_cloud(target.provider, target.endpoint)
                 and not prefs.cloud_allowed(db, user.id)):
             return page(preview=preview, chosen_target=target.id,
                         error=f"{target.label} is a public cloud model. To try the Safety harness on it, switch on "

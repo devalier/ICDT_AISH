@@ -157,6 +157,12 @@ the key revoked or the account suspended.
   explicit tick ("I understand… may revoke my API key or suspend my account"). The check is repeated
   when the run starts, so switching off stops runs still queued.
 - **On-prem models** are never affected. The **judge** that grades Safety replies must still be on-prem.
+- **What counts as public cloud** follows where requests go, not the provider chosen. An
+  "On-prem / OpenAI-compatible" URL is public cloud when its host is a known AI cloud service
+  (Fireworks, OpenRouter, OpenAI, Azure, Together, Groq, Hugging Face, …) or resolves to a public
+  address. A host that resolves only to private addresses, or not at all from the server, is on-prem.
+  An institution's own public range can be declared on-prem with `AISH_ONPREM_HOSTS=euiba.eu,…`
+  (known AI cloud hosts can never be). The same rule decides whether the judge is on-prem.
 - **Customising** the Safety suite first shows a consent screen about its sensitive content; editing opens
   only after the user ticks that they understand (recorded in the audit log).
 
