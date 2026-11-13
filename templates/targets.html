@@ -47,7 +47,8 @@
               </form>
             </details>
           </td>
-          <td class="small">{{ providers[target.provider].label if target.provider in providers else target.provider }}</td>
+          <td class="small">{{ providers[target.provider].label if target.provider in providers else target.provider }}
+            <span class="tag">{{ 'public cloud' if target.id in cloud_target_ids else 'on-prem' }}</span></td>
           <td class="small mono">{{ target.endpoint or '—' }}</td>
           <td class="small mono">{{ target.api_key_hint or 'none' }}</td>
           <td class="small">

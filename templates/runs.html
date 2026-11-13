@@ -19,11 +19,11 @@
       <div class="form-row">
         <div>
           <label for="suite_id">Test suite</label>
-          <select id="suite_id" name="suite_id" required>
+          <select id="suite_id" name="suite_id" required data-suite-select>
             {% for suite in suites %}
-              <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (official v{{ suite.version }})</option>
+              <option value="{{ suite.id }}"{% if suite.id == selected_suite %} selected{% endif %} data-restricted="{{ 'yes' if suite.restricted else 'no' }}">{{ suite.get('menu_label', suite.family) }} — {{ suite.get('title', suite.id) }} (official v{{ suite.version }})</option>
               {% if suite.id in my_versions %}
-                <option value="{{ suite.id }}:custom"{% if selected_suite == suite.id ~ ':custom' %} selected{% endif %}>{{ suite.get('menu_label', suite.family) }} — MY VERSION of {{ suite.get('title', suite.id) }} ({{ my_versions[suite.id].fingerprint[:6] }})</option>
+                <option value="{{ suite.id }}:custom"{% if selected_suite == suite.id ~ ':custom' %} selected{% endif %} data-restricted="{{ 'yes' if suite.restricted else 'no' }}">{{ suite.get('menu_label', suite.family) }} — MY VERSION of {{ suite.get('title', suite.id) }} ({{ my_versions[suite.id].fingerprint[:6] }})</option>
               {% endif %}
             {% endfor %}
           </select>
@@ -41,13 +41,39 @@
         {% for target in targets %}
           <label class="pick plain" for="m-{{ target.id }}">
             <input type="checkbox" id="m-{{ target.id }}" name="target_ids" value="{{ target.id }}" data-max-select="3"
+                   data-cloud="{{ 'yes' if target.id in cloud_target_ids else 'no' }}" data-label="{{ target.label }}"
                    {% if target.id in selected_models %}checked{% endif %}>
             <span><strong>{{ target.label }}</strong> <span class="mono small muted">{{ target.model_name }}</span>
+              <span class="tag">{{ 'public cloud' if target.id in cloud_target_ids else 'on-prem' }}</span>
               {% if target.last_checked_at and not target.last_check_ok %}<span class="status status-bad small">✕ last check failed</span>{% endif %}
             </span>
           </label>
         {% endfor %}
       </fieldset>
+
+      {# Safety (restricted) suite guidance. Shown by the script only when a restricted suite is
+         selected; without JavaScript it is always shown, which is the safe default. #}
+      <div class="danger-box" data-safety-panel>
+        <p class="danger-text">Safety harness: {{ safety_warning }}</p>
+        {% if not safety_toggle_available %}
+          <p class="small">On this deployment the Safety harness runs <strong>only on on-prem models</strong>; public cloud
+            models are disabled by the administrator.</p>
+        {% elif not safety_cloud_allowed %}
+          <p class="small">It runs on <strong>on-prem models</strong>. Public cloud models are <strong>blocked</strong>
+            because “{{ safety_switch_name }}” is switched off. To allow them, switch it on in the
+            <a href="/suites/{{ restricted_suite_ids[0] if restricted_suite_ids else 'ailuminate' }}#cloud-permission">Safety test suite</a> page.</p>
+          <p class="small" data-safety-cloud-list hidden></p>
+        {% else %}
+          <p class="small">“{{ safety_switch_name }}” is <strong>on</strong>, so public cloud models are allowed.</p>
+          <div data-safety-confirm>
+            <p class="small" data-safety-cloud-list></p>
+            <label class="plain confirm-line"><input type="checkbox" name="confirm_cloud_safety" value="1">
+              <strong>I understand that this run sends safety-challenging prompts to the public cloud models selected,
+              and that the provider may revoke my API key or suspend my account.</strong></label>
+          </div>
+        {% endif %}
+      </div>
+
       <div class="select-bar">
         <button type="submit" data-run-selected disabled>Run</button>
         <span class="muted small" data-select-status role="status">Select 1 to 3 models.</span>

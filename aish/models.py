@@ -128,6 +128,20 @@ class CustomSuite(Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
+class UserPreference(Base):
+    """Per-user choices that change what the harness is allowed to do on their behalf. Every
+    change is also written to the audit log."""
+
+    __tablename__ = "user_preferences"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    # The user has switched on "Allow Safety Harness on Public Cloud Models".
+    safety_cloud_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    safety_cloud_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    # The user has read and accepted the notice about the Safety suite's content before customising it.
+    safety_content_ack_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
 class CustomDraft(Base):
     """Work in progress on a personal version. One per user and suite, overwritten as the user
     edits; it can be invalid. Only "Save as my version" turns a valid draft into a CustomSuite."""

@@ -69,6 +69,9 @@ class Settings(BaseSettings):
 
     # Outbound model calls.
     allow_private_endpoints: bool = True  # on-prem models live on private networks
+    # Comma-separated host suffixes that are on-prem even though they resolve to a public
+    # address (an institution's own public range). Known AI cloud hosts can never be listed.
+    onprem_hosts: str = ""
     request_timeout_seconds: float = 120.0
     max_concurrent_requests: int = 4
     # Must exceed the largest run the instance is expected to accept. Sampled
@@ -82,6 +85,11 @@ class Settings(BaseSettings):
     judge_model: str = ""
     judge_endpoint: str = ""
     judge_api_key: str = ""
+
+    # Whether users may switch on "Allow Safety Harness on Public Cloud Models" for themselves.
+    # A deployment that must keep hazardous prompts off third-party APIs sets this to false;
+    # the switch is then shown locked off.
+    allow_safety_on_cloud_toggle: bool = True
 
     # OpenRouter routes each request to one of several upstream providers. "deny" (the default)
     # restricts it to providers that do not store or train on prompts; "allow" lifts that.

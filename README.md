@@ -136,10 +136,35 @@ key is encrypted at rest and never shown again.
 | On-prem / OpenAI-compatible | from the endpoint | The only provider that takes a URL from the form |
 
 Fireworks and OpenRouter are always called on their own fixed APIs, so a key entered for them can
-never be sent to another host. Both are cloud providers: the restricted AILuminate suite refuses them,
-both as the model under test and as the judge. Either can be used as the judge for unrestricted suites
+never be sent to another host. Both are cloud providers, so the restricted Safety (AILuminate) suite
+refuses them as the model under test unless the user allows it (see below), and always refuses them as
+the judge. Either can be used as the judge for unrestricted suites
 (`AISH_JUDGE_PROVIDER=openrouter` or `fireworks`, with `AISH_JUDGE_MODEL` and `AISH_JUDGE_API_KEY`).
 Reasoning text that some open models put in `<think>` tags is removed before scoring.
+
+## The Safety harness and public cloud models
+
+The Safety suite (AILuminate) prompts models with deliberately harmful requests. By default it runs only
+on **on-prem** models: sending those prompts to a commercial API can breach the provider's terms and get
+the key revoked or the account suspended.
+
+- **The user's switch.** On the Safety test suite page, **Allow Safety Harness on Public Cloud Models**
+  (off by default, per user, every change audited) lets that user run it on cloud models. Switching it on
+  shows the warning and asks for confirmation. A deployment can lock it off for everyone with
+  `AISH_ALLOW_SAFETY_ON_CLOUD_TOGGLE=false`.
+- **Each run.** On Run tests, choosing Safety shows the warning. With the switch off, any public cloud model
+  selected is named as blocked, with a link to the switch. With it on, a run on a cloud model needs an
+  explicit tick ("I understand… may revoke my API key or suspend my account"). The check is repeated
+  when the run starts, so switching off stops runs still queued.
+- **On-prem models** are never affected. The **judge** that grades Safety replies must still be on-prem.
+- **What counts as public cloud** follows where requests go, not the provider chosen. An
+  "On-prem / OpenAI-compatible" URL is public cloud when its host is a known AI cloud service
+  (Fireworks, OpenRouter, OpenAI, Azure, Together, Groq, Hugging Face, …) or resolves to a public
+  address. A host that resolves only to private addresses, or not at all from the server, is on-prem.
+  An institution's own public range can be declared on-prem with `AISH_ONPREM_HOSTS=euiba.eu,…`
+  (known AI cloud hosts can never be). The same rule decides whether the judge is on-prem.
+- **Customising** the Safety suite first shows a consent screen about its sensitive content; editing opens
+  only after the user ticks that they understand (recorded in the audit log).
 
 ## Customising a test suite
 

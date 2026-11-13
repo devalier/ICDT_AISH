@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import custom, judge
+from .. import custom, judge, prefs
 from ..config import get_settings
 from ..db import get_session
 from ..models import ModelTarget, Result, Run
@@ -84,6 +84,12 @@ def list_runs(
             "error": error,
             "selected_suite": suite,
             "selected_models": {m for m in (model if isinstance(model, list) else []) if isinstance(m, int)},
+            "cloud_target_ids": {t.id for t in targets if prefs.is_cloud(t.provider, t.endpoint)},
+            "safety_cloud_allowed": prefs.cloud_allowed(db, context.user.id),
+            "safety_toggle_available": prefs.toggle_available(),
+            "safety_switch_name": prefs.SWITCH_NAME,
+            "safety_warning": prefs.WARNING,
+            "restricted_suite_ids": [s["id"] for s in view.suites() if s.get("restricted")],
             "started": _started_runs(db, context, started),
             "suite_names": {s["id"]: f"{s.get('menu_label', s.get('family', ''))} · {s.get('title', s['id'])}"
                             for s in view.suites()},
@@ -101,6 +107,7 @@ def start_run(
     target_ids: list[int] = Form(default=[]),
     target_id: int | None = Form(None),
     mode: str = Form("sample"),
+    confirm_cloud_safety: str = Form(""),
     db: Session = Depends(get_session),
     context: AuthContext = Depends(require_user),
 ):
@@ -148,11 +155,24 @@ def start_run(
     targets.sort(key=lambda t: chosen.index(t.id))
 
     sample = mode != "full"
+    cloud_ok = False
     if suite.get("restricted"):
-        cloud = [t.label for t in targets if t.provider in judge.CLOUD_PROVIDERS]
+        cloud = [t.label for t in targets if prefs.is_cloud(t.provider, t.endpoint)]
         if cloud:
-            return fail("This suite is restricted: it may only run against on-prem "
-                        f"(openai_compatible) models, not cloud models ({', '.join(cloud)}).", 409)
+            names = ", ".join(cloud)
+            if not prefs.toggle_available():
+                return fail(f"The Safety harness cannot run on public cloud models ({names}) on this "
+                            "deployment: the administrator has disabled it. Choose on-prem models.", 409)
+            if not prefs.cloud_allowed(db, context.user.id):
+                return fail(f"The Safety harness is not allowed on public cloud models ({names}). "
+                            f"To allow it, switch on \u201c{prefs.SWITCH_NAME}\u201d on the Safety "
+                            "test suite page (Test suites \u2192 Safety), then come back. "
+                            "On-prem models can run it without this.", 409)
+            if not confirm_cloud_safety:
+                return fail(f"You selected public cloud models ({names}) for the Safety harness. "
+                            "Tick the box confirming you understand the risk to your provider "
+                            "account, then run again.", 409)
+            cloud_ok = True
     try:
         if suite.get("family") == "safety":
             judge.require_configured(restricted=bool(suite.get("restricted")))
@@ -198,6 +218,8 @@ def start_run(
                     "temperature": run_temperature(suite, sample),
                     "top_p": 1.0,
                     "max_tokens": 1024,
+                    **({"cloud_safety_confirmed": True}
+                       if cloud_ok and prefs.is_cloud(target.provider, target.endpoint) else {}),
                     **({"custom_suite_id": custom_row.id, "fingerprint": custom_row.fingerprint}
                        if custom_row else {}),
                     **({"judge": judge.describe()} if suite.get("family") == "safety" else {}),

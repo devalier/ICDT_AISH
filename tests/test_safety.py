@@ -149,7 +149,7 @@ def test_restricted_suite_refuses_cloud_targets(seeded, safety_env, monkeypatch)
     run_id = _queue("ailuminate", user_id, target_id)
     adapter = StubAdapter(lambda _p: "x")
     run, _, _ = _execute(run_id, adapter, monkeypatch)
-    assert run.status == "failed" and "restricted" in run.error
+    assert run.status == "failed" and "Allow Safety Harness on Public Cloud Models" in run.error
     assert adapter.calls == []
 
 

@@ -13,19 +13,20 @@ import math
 from pathlib import Path
 
 import yaml
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from harness.loader import packs_dir
 
-from .. import custom, judge, scoring
+from .. import custom, judge, prefs, scoring
 from ..config import data_path, find_data, get_settings
 from ..db import get_session
 from ..models import ModelTarget, Run
 from ..packs import current
-from .deps import AuthContext, optional_user, require_user, templates
+from ..providers.locality import is_cloud_target
+from .deps import AuthContext, audit, optional_user, require_user, templates, verify_csrf
 
 router = APIRouter()
 
@@ -560,7 +561,7 @@ def readiness(suite: dict) -> list[dict]:
         checks.append({"item": "Judge model and endpoint configured", "ok": bool(s.judge_model),
                        "detail": s.judge_model or "set AISH_JUDGE_MODEL and AISH_JUDGE_ENDPOINT"})
         if s.judge_model:
-            on_prem = s.judge_provider not in judge.CLOUD_PROVIDERS
+            on_prem = not is_cloud_target(s.judge_provider, s.judge_endpoint)
             checks.append({"item": "Judge is on-prem (restricted content)", "ok": on_prem,
                            "detail": s.judge_provider})
             cal = judge.calibration_status(suite)
@@ -626,6 +627,7 @@ def suite_page(
     harness: str | None = None,
     saved: str | None = None,
     reset: str | None = None,
+    cloud: str | None = None,
     db: Session = Depends(get_session),
     context: AuthContext = Depends(require_user),
 ):
@@ -647,14 +649,20 @@ def suite_page(
             my_row.yaml_text.splitlines(keepends=True),
             "official", "your version", n=2))
     notice = (f"Saved your version of this suite ({saved}). Run it from Run tests, or compare it below."
-              if saved else "Back to the official suite." if reset is not None else None)
+              if saved else "Back to the official suite." if reset is not None
+              else f"{prefs.SWITCH_NAME}: switched {cloud}." if cloud in ("on", "off") else None)
     return templates.TemplateResponse(
         request,
         "suite.html",
         {
             "user": context.user,
+            "csrf_token": context.csrf_token,
             "notice": notice,
             "my_row": my_row,
+            "safety_pref": prefs.get(db, context.user.id) if suite.get("restricted") else None,
+            "safety_toggle_available": prefs.toggle_available(),
+            "safety_switch_name": prefs.SWITCH_NAME,
+            "safety_warning": prefs.WARNING,
             "harness": harness,
             "diff": diff,
             "suite": suite,
@@ -670,6 +678,26 @@ def suite_page(
             "problems": [p for p in view.problems if p.file.endswith(suite.get("_path", "∅"))],
         },
     )
+
+
+@router.post("/suites/{suite_id}/cloud-permission", dependencies=[Depends(verify_csrf)])
+def set_cloud_permission(
+    request: Request,
+    suite_id: str,
+    allowed: str = Form(""),
+    db: Session = Depends(get_session),
+    context: AuthContext = Depends(require_user),
+):
+    """The user's own switch: may restricted (Safety) suites run on public cloud models?"""
+    suite = current().suite(suite_id)
+    if suite is None or not suite.get("restricted"):
+        return RedirectResponse(f"/suites/{suite_id}", status_code=303)
+    on = allowed in ("1", "on", "true") and prefs.toggle_available()
+    prefs.set_cloud_allowed(db, context.user.id, on)
+    audit(db, "safety.cloud_" + ("allowed" if on else "disallowed"), request=request,
+          user_id=context.user.id, detail=suite_id)
+    db.commit()
+    return RedirectResponse(f"/suites/{suite_id}?cloud={'on' if on else 'off'}#cloud-permission", status_code=303)
 
 
 # ---- legacy URLs ----------------------------------------------------------- #

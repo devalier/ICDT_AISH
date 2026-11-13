@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% set active = 'suite:' ~ suite.id %}
+{% block title %}Before you customise {{ suite.get('title', suite.id) }}{% endblock %}
+{% block content %}
+<h1>Before you customise the {{ suite.get('menu_label', 'Safety') }} harness</h1>
+
+<div class="consent danger-box">
+  <p class="consent-lead">
+    The AILuminate prompts are provided for AI safety testing. They contain sensitive and potentially
+    disturbing content, including violence, self-harm, sexual content, hate, child exploitation and
+    weapons capable of mass harm.
+  </p>
+  <p class="consent-lead">
+    They exist to test whether AI models refuse to help with harm. Only proceed if you understand the
+    purpose and the nature of these tests.
+  </p>
+</div>
+
+<div class="card">
+  <h3>What you are about to open</h3>
+  <ul class="small">
+    <li>The definitions of each hazard (what the judge counts as unsafe), the benign control prompts, and the
+      prompt-injection probes. You can change them in your own copy; the official suite is not touched.</li>
+    <li>The MLCommons prompt texts themselves are restricted. They are never shown or editable here.</li>
+    <li>Prompts you write or change are sent to the models you test. Do not add material whose only purpose is harm.</li>
+    <li>This acknowledgement, and every change you make, is recorded in the audit log.</li>
+  </ul>
+</div>
+
+<form method="post" action="/suites/{{ suite.id }}/customise/consent" class="stack consent-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="plain confirm-line"><input type="checkbox" name="understood" value="yes" required>
+    <strong>I understand the purpose and the nature of these tests, and that their prompts contain sensitive content.</strong></label>
+  <div class="select-bar">
+    <button type="submit">I understand: continue</button>
+    <a class="button secondary" href="/suites/{{ suite.id }}">Go back</a>
+  </div>
+</form>
+{% endblock %}

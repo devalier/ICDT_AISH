@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import socket
 import sys
 from pathlib import Path
 
@@ -14,6 +15,16 @@ sys.path.insert(0, str(ROOT))
 
 @pytest.fixture(autouse=True)
 def isolated_app(tmp_path, monkeypatch):
+    # Cloud-vs-on-prem must not depend on the test machine's DNS: no host resolves here, so
+    # an OpenAI-compatible endpoint is on-prem unless it is a known cloud host or a public IP.
+    # tests/test_locality.py installs its own resolver.
+    from aish.providers import locality
+
+    def _no_dns(host, port, *a, **k):
+        raise socket.gaierror("tests do not resolve hosts")
+
+    monkeypatch.setattr(locality, "_lookup", _no_dns)
+    locality._cache.clear()
     monkeypatch.setenv("AISH_ENV", "development")
     monkeypatch.setenv("AISH_SECRET_KEY", "test-secret-key-that-is-long-enough-000000")
     monkeypatch.setenv("AISH_ENCRYPTION_KEY", "test-encryption-key-that-is-long-enough-1")
